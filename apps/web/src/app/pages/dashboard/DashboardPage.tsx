@@ -7,6 +7,8 @@ import { SessionsBarChart } from './components/SessionsBarChart';
 import { SessionsPieChart } from './components/SessionsPieChart';
 import { AttendanceGauge } from './components/AttendanceGauge';
 import { RecentActivity } from './components/RecentActivity';
+import { ClientDashboard } from './components/ClientDashboard';
+import { ClientDashboard } from './components/ClientDashboard';
 import styled from 'styled-components';
 
 export const DashboardPage: React.FC = () => {
@@ -86,13 +88,7 @@ export const DashboardPage: React.FC = () => {
         </>
       )}
 
-      {!isAdmin && (
-        <EmptyState>
-          <EmptyIcon>◫</EmptyIcon>
-          <EmptyTitle>O teu plano de treino está a ser preparado.</EmptyTitle>
-          <EmptyText>O teu personal trainer irá criar o teu programa em breve.</EmptyText>
-        </EmptyState>
-      )}
+      {!isAdmin && <ClientDashboard />}
     </Page>
   );
 };
@@ -140,8 +136,3 @@ const ActionCard = styled.div`
 `;
 const ActionIcon = styled.div`font-size: 22px; margin-bottom: 8px; color: #c8f542;`;
 const ActionLabel = styled.div`font-family: 'DM Mono', monospace; font-size: 10px; color: #666677; letter-spacing: 1px;`;
-
-const EmptyState = styled.div`text-align: center; padding: 80px 24px;`;
-const EmptyIcon = styled.div`font-size: 48px; color: #2a2a35; margin-bottom: 20px;`;
-const EmptyTitle = styled.h2`font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: #e8e8f0; margin-bottom: 8px;`;
-const EmptyText = styled.p`font-family: 'DM Mono', monospace; font-size: 12px; color: #666677;`;
