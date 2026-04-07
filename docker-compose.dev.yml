@@ -1,0 +1,74 @@
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    platform: linux/amd64
+    shm_size: 1g
+    restart: on-failure
+    command: ["postgres", "-c", "max_connections=200"]
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=lavrador_team
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - ./docker/db/data:/var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lavrador_team"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  pg-admin:
+    image: dpage/pgadmin4
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5558:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@lavrador.pt
+      - PGADMIN_DEFAULT_PASSWORD=lavrador
+    volumes:
+      - ./docker/pgadmin/lib:/var/lib/pgadmin
+
+  # api:
+  #   container_name: lavrador_api
+  #   build:
+  #     context: .
+  #     dockerfile: apps/api/docker-utils/Dockerfile.dev
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   ports:
+  #     - "3333:3333"
+  #   environment:
+  #     PORT: 3333
+  #     NODE_ENV: development
+  #     DATABASE_URL: postgresql://postgres:postgres@db:5432/lavrador_team
+  #     PGHOST: db
+  #     PGPORT: 5432
+  #     PGUSER: postgres
+  #     PGPASSWORD: postgres
+  #     PGDATABASE: lavrador_team
+  #     JWT_ACCESS_SECRET: dev-access-secret-change-in-prod-min32chars
+  #     JWT_REFRESH_SECRET: dev-refresh-secret-change-in-prod-min32chars
+  #     JWT_ACCESS_EXPIRES_IN: 1h
+  #     JWT_REFRESH_EXPIRES_IN: 7d
+  #     CORS_ORIGIN: http://localhost:4501
+  #   volumes:
+  #     - .:/app
+  #     - /app/node_modules
+  #   command: yarn api
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD",
+  #         "node",
+  #         "-e",
+  #         "fetch('http://localhost:3333/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+  #       ]
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 10

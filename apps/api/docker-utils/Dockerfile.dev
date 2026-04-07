@@ -1,0 +1,21 @@
+FROM node:20-alpine
+
+# Install psql client (needed for scripts that call psql directly)
+RUN apk add --no-cache postgresql-client
+
+WORKDIR /app
+
+# Install dependencies only when package.json changes
+# In dev we mount the full monorepo so node_modules are available
+# The volume mount in compose handles this — this layer is a fallback
+COPY package.json yarn.lock ./
+
+RUN yarn install --frozen-lockfile
+
+# Prisma client generation happens at runtime via entrypoint
+# because schema.prisma is mounted from the host
+
+EXPOSE 3333
+
+# Default command — overridden in compose
+CMD ["yarn", "api"]

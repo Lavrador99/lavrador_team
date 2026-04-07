@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.nx/cache
+.nx/workspace-data
+
+# Env
+.env
+*.local
+
+# Docker volumes (data persisted locally, never committed)
+docker/db/data/
+docker/pgadmin/lib/
+
+# Prisma migrations are committed, generated client is not
+apps/api/prisma/migrations/**/migration.sql
+# (Keep the migrations folder itself but ignore generated client)
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

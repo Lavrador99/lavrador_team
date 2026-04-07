@@ -1,0 +1,347 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum MovementPattern {
+  DOMINANTE_JOELHO
+  DOMINANTE_ANCA
+  EMPURRAR_HORIZONTAL
+  EMPURRAR_VERTICAL
+  PUXAR_HORIZONTAL
+  PUXAR_VERTICAL
+  CORE
+  LOCOMOCAO
+}
+
+enum Equipment {
+  BARRA
+  HALTERES
+  RACK
+  MAQUINAS
+  CABO
+  KETTLEBELL
+  PESO_CORPORAL
+  BANCO
+  CARDIO_EQ
+  SMITH
+  RESISTANCE_BAND
+  PARALELAS
+  BARRA_FIXA
+  FOAM_ROLLER
+}
+
+enum TrainingLevel {
+  INICIANTE
+  INTERMEDIO
+  AVANCADO
+}
+
+enum ProgramStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum SelectionType {
+  PREFERRED
+  REQUIRED
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+enum SessionType {
+  TRAINING
+  ASSESSMENT
+  FOLLOWUP
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// ─────────────────────────────────────────
+// EXERCISES
+// ─────────────────────────────────────────
+
+model Exercise {
+  id               String          @id @default(cuid())
+  name             String
+  pattern          MovementPattern
+  primaryMuscles   String[]
+  secondaryMuscles String[]
+  equipment        Equipment[]
+  level            TrainingLevel
+  gifUrl           String?
+  videoUrl         String?
+  clinicalNotes    String[]        @default([])
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  exerciseSelections   ExerciseSelection[]
+  preferenceScores     ExercisePreferenceScore[]
+
+  @@unique([name])
+  @@map("exercises")
+}
+
+// ─────────────────────────────────────────
+// AUTH & USERS
+// ─────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(CLIENT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+  client        Client?
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────
+// CLIENTS
+// ─────────────────────────────────────────
+
+model Client {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  name      String
+  birthDate DateTime?
+  phone     String?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessments Assessment[]
+  programs    Program[]
+  sessions    Session[]
+  workouts    Workout[]
+  workoutLogs WorkoutLog[]
+
+  @@map("clients")
+}
+
+// ─────────────────────────────────────────
+// ASSESSMENTS
+// ─────────────────────────────────────────
+
+model Assessment {
+  id        String        @id @default(cuid())
+  clientId  String
+  level     TrainingLevel
+  data      Json
+  flags     String[]      @default([])
+  createdAt DateTime      @default(now())
+
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  programs Program[]
+
+  @@map("assessments")
+}
+
+// ─────────────────────────────────────────
+// PROGRAMS
+// ─────────────────────────────────────────
+
+model Program {
+  id           String        @id @default(cuid())
+  clientId     String
+  assessmentId String
+  name         String
+  status       ProgramStatus @default(ACTIVE)
+  phases       Json
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  client             Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  assessment         Assessment          @relation(fields: [assessmentId], references: [id])
+  exerciseSelections ExerciseSelection[]
+  sessions           Session[]
+  workouts           Workout[]
+
+  @@map("programs")
+}
+
+// ─────────────────────────────────────────
+// EXERCISE SELECTIONS (80/20)
+// ─────────────────────────────────────────
+
+model ExerciseSelection {
+  id         String          @id @default(cuid())
+  programId  String
+  exerciseId String
+  pattern    MovementPattern
+  type       SelectionType
+  createdAt  DateTime        @default(now())
+
+  program  Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@unique([programId, exerciseId])
+  @@map("exercise_selections")
+}
+
+// ─────────────────────────────────────────
+// SESSIONS
+// ─────────────────────────────────────────
+
+model Session {
+  id          String        @id @default(cuid())
+  clientId    String
+  programId   String?
+  scheduledAt DateTime
+  duration    Int           @default(60)
+  type        SessionType   @default(TRAINING)
+  status      SessionStatus @default(SCHEDULED)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  client  Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  program Program? @relation(fields: [programId], references: [id])
+
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────
+// WORKOUTS (plano manual detalhado)
+// ─────────────────────────────────────────
+
+enum WorkoutStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Workout {
+  id         String        @id @default(cuid())
+  programId  String
+  clientId   String
+  name       String
+  dayLabel   String?
+  order      Int           @default(0)
+  status     WorkoutStatus @default(DRAFT)
+  blocks     Json          // WorkoutBlock[]
+  durationEstimatedMin Int @default(0)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  program Program      @relation(fields: [programId], references: [id], onDelete: Cascade)
+  client  Client       @relation(fields: [clientId],  references: [id], onDelete: Cascade)
+  logs    WorkoutLog[]
+
+  @@map("workouts")
+}
+
+model WorkoutLog {
+  id         String   @id @default(cuid())
+  workoutId  String
+  clientId   String
+  date       DateTime @default(now())
+  entries    Json     // WorkoutLogEntry[]
+  notes      String?
+  durationMin Int?
+  rpe        Int?     // 1-10 perceived effort
+  createdAt  DateTime @default(now())
+
+  workout Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  client  Client  @relation(fields: [clientId],  references: [id], onDelete: Cascade)
+
+  @@map("workout_logs")
+}
+
+// ─────────────────────────────────────────
+// AI KNOWLEDGE BASE
+// ─────────────────────────────────────────
+
+model AiSystemPrompt {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ai_system_prompts")
+}
+
+model AiKnowledgeDoc {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  source    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ai_knowledge_docs")
+}
+
+// ─────────────────────────────────────────
+// SUGGESTION ENGINE (Lavrador-Team Brain)
+// ─────────────────────────────────────────
+
+// Registo de preferências do PT — aprende com as escolhas manuais
+model ExercisePreferenceScore {
+  id             String        @id @default(cuid())
+  exerciseId     String
+  // Contexto em que o exercício foi escolhido
+  level          TrainingLevel
+  pattern        MovementPattern
+  objective      String        // ex: "HIPERTROFIA", "FORCA", "RESISTENCIA"
+  score          Float         @default(1.0)
+  timesUsed      Int           @default(1)
+  timesRejected  Int           @default(0)  // quando o PT substituiu
+  lastUsedAt     DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([exerciseId, level, pattern, objective])
+  @@map("exercise_preference_scores")
+}
+
+// Registo de substituições — quando o PT troca X por Y
+model ExerciseSubstitution {
+  id           String        @id @default(cuid())
+  fromExId     String        // exercício substituído
+  toExId       String        // exercício escolhido
+  level        TrainingLevel
+  reason       String?       // ex: "dor_joelho", "sem_equipamento"
+  createdAt    DateTime      @default(now())
+
+  @@map("exercise_substitutions")
+}
