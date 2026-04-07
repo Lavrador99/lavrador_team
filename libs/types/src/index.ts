@@ -482,6 +482,50 @@ export interface CreateWorkoutLogRequest {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PERSONAL RECORDS (RMs)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type RecordType = 'WEIGHT_KG' | 'REPS_MAX' | 'ISOMETRIC_S' | 'DISTANCE_M' | 'DURATION_S';
+
+export const RECORD_TYPE_LABEL: Record<RecordType, string> = {
+  WEIGHT_KG:   'Carga (kg)',
+  REPS_MAX:    'Reps máximas',
+  ISOMETRIC_S: 'Isométrica (s)',
+  DISTANCE_M:  'Distância (m)',
+  DURATION_S:  'Duração (s)',
+};
+
+export const RECORD_TYPE_UNIT: Record<RecordType, string> = {
+  WEIGHT_KG:   'kg',
+  REPS_MAX:    'reps',
+  ISOMETRIC_S: 's',
+  DISTANCE_M:  'm',
+  DURATION_S:  's',
+};
+
+export interface PersonalRecordDto {
+  id: string;
+  clientId: string;
+  exerciseId?: string;
+  exerciseName: string;
+  type: RecordType;
+  value: number;
+  notes?: string;
+  recordedAt: string;
+  createdAt: string;
+}
+
+export interface CreatePersonalRecordRequest {
+  clientId: string;
+  exerciseId?: string;
+  exerciseName: string;
+  type: RecordType;
+  value: number;
+  notes?: string;
+  recordedAt?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // USER CREATION
 // ─────────────────────────────────────────────────────────────────────────────
 

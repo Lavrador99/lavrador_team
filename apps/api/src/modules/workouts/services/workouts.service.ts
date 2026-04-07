@@ -39,8 +39,8 @@ export class WorkoutsService {
     return this.repo.findByClient(clientId);
   }
 
-  async findActiveByClient(clientId: string) {
-    return this.repo.findActiveByClient(clientId);
+  async findActiveByUser(userId: string) {
+    return this.repo.findActiveByUser(userId);
   }
 
   async findById(

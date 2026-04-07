@@ -71,6 +71,10 @@ export class UpdateExerciseDto {
   gifUrl?: string;
 
   @IsOptional()
+  @IsUrl()
+  videoUrl?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   clinicalNotes?: string[];

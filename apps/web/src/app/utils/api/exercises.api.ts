@@ -32,6 +32,23 @@ export const exercisesApi = {
     return data;
   },
 
+  updateMedia: async (id: string, media: { videoUrl?: string | null; gifUrl?: string | null }): Promise<ExerciseDto> => {
+    const { data } = await api.patch(`/exercises/${id}`, media);
+    return data;
+  },
+
+  uploadFile: async (id: string, file: File, onProgress?: (pct: number) => void): Promise<ExerciseDto> => {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await api.post(`/exercises/${id}/upload`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (e) => {
+        if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+      },
+    });
+    return data;
+  },
+
   remove: async (id: string): Promise<void> => {
     await api.delete(`/exercises/${id}`);
   },

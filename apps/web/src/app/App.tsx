@@ -15,6 +15,7 @@ import { SchedulePage } from './pages/schedule/SchedulePage';
 import { NewUserPage } from './pages/users-new/NewUserPage';
 import { WorkoutsListPage } from './pages/workouts/WorkoutsListPage';
 import { WorkoutEditorPage } from './pages/workouts/WorkoutEditorPage';
+import { MyPlanPage } from './pages/my-plan/MyPlanPage';
 
 export const App: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -34,6 +35,7 @@ export const App: React.FC = () => {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/exercises" element={<ExercisesPage />} />
+            <Route path="/my-plan" element={<MyPlanPage />} />
           </Route>
         </Route>
 

@@ -10,6 +10,7 @@ import { SessionsModule } from './modules/sessions/sessions.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { WorkoutsModule } from './modules/workouts/workouts.module';
 import { SuggestionModule } from './modules/suggestion/suggestion.module';
+import { PersonalRecordsModule } from './modules/personal-records/personal-records.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { SuggestionModule } from './modules/suggestion/suggestion.module';
     StatsModule,
     WorkoutsModule,
     SuggestionModule,
+    PersonalRecordsModule,
   ],
 })
 export class AppModule {}

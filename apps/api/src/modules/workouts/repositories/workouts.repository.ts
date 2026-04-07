@@ -33,10 +33,16 @@ export class WorkoutsRepository {
     });
   }
 
-  // CLIENT: activos
-  async findActiveByClient(clientId: string) {
+  // CLIENT: resolve userId → clientId, depois devolve ACTIVE + DRAFT
+  async findActiveByUser(userId: string) {
+    const client = await this.prisma.client.findUnique({ where: { userId } });
+    if (!client) return [];
+
     return this.prisma.workout.findMany({
-      where: { clientId, status: WorkoutStatus.ACTIVE },
+      where: {
+        clientId: client.id,
+        status: { not: WorkoutStatus.ARCHIVED },
+      },
       orderBy: { order: "asc" },
       include: { program: { select: { id: true, name: true } } },
     });

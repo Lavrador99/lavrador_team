@@ -77,7 +77,7 @@ export class WorkoutsController {
 
   @Get("my")
   getMyWorkouts(@CurrentUser("sub") userId: string) {
-    return this.workoutsService.findActiveByClient(userId);
+    return this.workoutsService.findActiveByUser(userId);
   }
 
   // ─── Ambos: detalhe + logs ────────────────────────────────────────────

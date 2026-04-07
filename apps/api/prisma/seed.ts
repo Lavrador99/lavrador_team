@@ -61,6 +61,7 @@ async function main() {
         equipment: ex.equipment,
         level: ex.level,
         clinicalNotes: ex.clinicalNotes ?? [],
+        gifUrl: ex.gifUrl ?? null,
         isActive: true,
       },
       create: {

@@ -12,6 +12,7 @@ interface AuthState {
   accessToken: string | null;
   loading: boolean;
   error: string | null;
+  initializing: boolean; // true até o primeiro refresh completar
 }
 
 const initialState: AuthState = {
@@ -19,6 +20,7 @@ const initialState: AuthState = {
   accessToken: null,
   loading: false,
   error: null,
+  initializing: true,
 };
 
 // ─── Thunks ──────────────────────────────────────────────────────────────────
@@ -86,10 +88,12 @@ const authSlice = createSlice({
       .addCase(refreshSession.fulfilled, (state, action) => {
         state.accessToken = action.payload.accessToken;
         state.user = action.payload.user;
+        state.initializing = false;
       })
       .addCase(refreshSession.rejected, (state) => {
         state.user = null;
         state.accessToken = null;
+        state.initializing = false;
       });
   },
 });

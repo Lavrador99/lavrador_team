@@ -64,6 +64,10 @@ export class ProgramsRepository {
     return this.prisma.program.update({ where: { id }, data: { status } });
   }
 
+  async delete(id: string) {
+    return this.prisma.program.delete({ where: { id } });
+  }
+
   async updateSelections(
     programId: string,
     selections: {

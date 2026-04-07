@@ -1,10 +1,20 @@
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { NestExpressApplication } from "@nestjs/platform-express";
 import * as cookieParser from "cookie-parser";
+import { join } from "path";
+import * as fs from "fs";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Ensure uploads directory exists
+  const uploadsDir = join(process.cwd(), "uploads", "exercises");
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+  // Serve uploaded files as static assets at /uploads/*
+  app.useStaticAssets(join(process.cwd(), "uploads"), { prefix: "/uploads" });
 
   app.setGlobalPrefix("api");
 

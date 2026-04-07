@@ -2,21 +2,60 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store';
 import { updateFormData, nextStep, prevStep } from '../../../store/slices/prescriptionSlice';
+import styled from 'styled-components';
 import {
-  StepLabel, SectionTitle, Grid2, Field, Label, Select,
-  ChipGroup, Chip, Divider, SectionLabel, BtnRow, BtnPrimary, BtnSecondary, ErrorMsg,
+  SectionTitle, SectionDescription, CardSection, CardSectionTitle,
+  ChipGroup, Chip, BtnRow, BtnPrimary, BtnSecondary, ErrorMsg,
+  OptionCard, OptionGrid, OptionIcon, OptionLabel, OptionSub,
+  StepperRow, StepperOption,
 } from '../Prescription.styles';
 
-const OBJETIVOS = ['Emagrecimento', 'Hipertrofia', 'Força Máxima', 'Resistência Cardiovascular', 'Saúde Geral', 'Performance Atlética'];
+const OBJETIVOS: { value: string; icon: string; label: string; sub: string }[] = [
+  { value: 'Emagrecimento',              icon: '🔥', label: 'Emagrecimento',       sub: 'Perda de massa gorda' },
+  { value: 'Hipertrofia',                icon: '💪', label: 'Hipertrofia',          sub: 'Ganho muscular' },
+  { value: 'Força Máxima',               icon: '🏋️', label: 'Força Máxima',         sub: 'Performance de força' },
+  { value: 'Resistência Cardiovascular', icon: '❤️', label: 'Resistência Cardio',   sub: 'Capacidade aeróbica' },
+  { value: 'Saúde Geral',                icon: '🌿', label: 'Saúde Geral',           sub: 'Bem-estar e qualidade de vida' },
+  { value: 'Performance Atlética',       icon: '⚡', label: 'Performance',           sub: 'Rendimento desportivo' },
+];
+
+const PRATICA_OPTIONS = [
+  { value: 'nao',       icon: '🛋️', label: 'Não',         sub: 'Nunca / recomeçou' },
+  { value: 'sim_pouco', icon: '🚶', label: 'Irregular',   sub: 'Menos de 2x/sem' },
+  { value: 'sim',       icon: '🏃', label: 'Regular',     sub: '2–3x por semana' },
+  { value: 'sim_muito', icon: '⚡', label: 'Intenso',     sub: '4+ vezes por semana' },
+];
+
 const LESOES = ['joelho', 'ombro', 'lombar', 'tornozelo', 'cervical'];
-const LESAO_LABELS: Record<string, string> = { joelho: 'Joelho', ombro: 'Ombro', lombar: 'Lombar', tornozelo: 'Tornozelo', cervical: 'Cervical' };
-const EQUIPAMENTOS = ['ginasio_completo', 'barra', 'halteres', 'rack', 'maquinas', 'cabo', 'kettlebell', 'banco', 'cardio_eq', 'peso_corporal', 'barra_fixa', 'paralelas', 'resistance_band'];
+const LESAO_LABELS: Record<string, string> = {
+  joelho: 'Joelho', ombro: 'Ombro', lombar: 'Lombar',
+  tornozelo: 'Tornozelo', cervical: 'Cervical',
+};
+
+const EQUIPAMENTOS = [
+  'ginasio_completo', 'barra', 'halteres', 'rack', 'maquinas', 'cabo',
+  'kettlebell', 'banco', 'cardio_eq', 'peso_corporal', 'barra_fixa',
+  'paralelas', 'resistance_band',
+];
 const EQUIP_LABELS: Record<string, string> = {
   ginasio_completo: 'Ginásio completo', barra: 'Barra', halteres: 'Halteres',
   rack: 'Rack', maquinas: 'Máquinas', cabo: 'Cabo', kettlebell: 'Kettlebell',
-  banco: 'Banco', cardio_eq: 'Cardio', peso_corporal: 'Peso Corporal',
-  barra_fixa: 'Barra Fixa', paralelas: 'Paralelas', resistance_band: 'Elásticos',
+  banco: 'Banco', cardio_eq: 'Cardio', peso_corporal: 'Peso corporal',
+  barra_fixa: 'Barra fixa', paralelas: 'Paralelas', resistance_band: 'Elásticos',
 };
+
+const DIAS = [2, 3, 4, 5, 6];
+const DURACAO = [30, 45, 60, 75, 90];
+const TEMPO_TREINO = [
+  { value: 0, label: '< 1 mês' },
+  { value: 1, label: '1 mês' },
+  { value: 3, label: '3 meses' },
+  { value: 6, label: '6 meses' },
+  { value: 12, label: '1 ano' },
+  { value: 24, label: '2 anos' },
+  { value: 36, label: '3 anos' },
+  { value: 60, label: '5+ anos' },
+];
 
 export const Step2Sports: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -24,8 +63,8 @@ export const Step2Sports: React.FC = () => {
 
   const [pratica, setPratica] = useState(formData.pratica ?? 'nao');
   const [tempoTreino, setTempoTreino] = useState(formData.tempoTreino?.toString() ?? '0');
-  const [diasSemana, setDiasSemana] = useState(formData.diasSemana?.toString() ?? '3');
-  const [duracaoSessao, setDuracaoSessao] = useState(formData.duracaoSessao?.toString() ?? '60');
+  const [diasSemana, setDiasSemana] = useState(formData.diasSemana ?? 3);
+  const [duracaoSessao, setDuracaoSessao] = useState(formData.duracaoSessao ?? 60);
   const [objetivo, setObjetivo] = useState(formData.objetivo ?? '');
   const [lesoes, setLesoes] = useState<string[]>(formData.lesoes ?? []);
   const [equipamento, setEquipamento] = useState<string[]>(formData.equipamento ?? []);
@@ -36,68 +75,144 @@ export const Step2Sports: React.FC = () => {
   };
 
   const handleNext = () => {
-    if (!objetivo) { setError('Seleciona um objetivo.'); return; }
+    if (!objetivo) { setError('Seleciona um objetivo principal.'); return; }
     if (equipamento.length === 0) { setError('Seleciona pelo menos um equipamento disponível.'); return; }
     dispatch(updateFormData({
-      pratica, tempoTreino: parseFloat(tempoTreino),
-      diasSemana: parseInt(diasSemana), duracaoSessao: parseInt(duracaoSessao),
-      objetivo, lesoes, equipamento,
+      pratica,
+      tempoTreino: parseFloat(tempoTreino),
+      diasSemana,
+      duracaoSessao,
+      objetivo,
+      lesoes,
+      equipamento,
     }));
     dispatch(nextStep());
   };
 
   return (
     <div>
-      <StepLabel>Passo 02 / 06</StepLabel>
-      <SectionTitle>Anamnese Desportiva & Objetivos</SectionTitle>
+      <SectionTitle>Anamnese Desportiva</SectionTitle>
+      <SectionDescription>
+        Historial de treino, objetivos e equipamento disponível.
+      </SectionDescription>
 
-      <Grid2>
-        <Field>
-          <Label>Pratica exercício atualmente?</Label>
-          <Select value={pratica} onChange={(e) => setPratica(e.target.value)}>
-            <option value="nao">Não / recentemente começou</option>
-            <option value="sim_pouco">Sim, irregular (&lt;2x/sem)</option>
-            <option value="sim">Sim, regular (2–3x/sem)</option>
-            <option value="sim_muito">Sim, intenso (4+x/sem)</option>
-          </Select>
-        </Field>
-        <Field><Label>Há quanto tempo (meses)</Label><Select value={tempoTreino} onChange={(e) => setTempoTreino(e.target.value)}>
-          {[0,1,2,3,6,9,12,18,24,36,60].map((v) => <option key={v} value={v}>{v === 0 ? 'Nunca / &lt;1 mês' : `${v} meses`}</option>)}
-        </Select></Field>
-        <Field><Label>Dias disponíveis/semana</Label><Select value={diasSemana} onChange={(e) => setDiasSemana(e.target.value)}>
-          {[2,3,4,5,6].map((v) => <option key={v} value={v}>{v} dias</option>)}
-        </Select></Field>
-        <Field><Label>Duração por sessão</Label><Select value={duracaoSessao} onChange={(e) => setDuracaoSessao(e.target.value)}>
-          {[30,45,60,75,90].map((v) => <option key={v} value={v}>{v} min</option>)}
-        </Select></Field>
-      </Grid2>
+      {/* ── Objetivo ──────────────────────────────────────────── */}
+      <CardSection>
+        <CardSectionTitle>Objetivo principal</CardSectionTitle>
+        <ObjectiveGrid>
+          {OBJETIVOS.map((o) => (
+            <OptionCard
+              key={o.value}
+              $selected={objetivo === o.value}
+              onClick={() => setObjetivo(o.value)}
+            >
+              <OptionIcon>{o.icon}</OptionIcon>
+              <OptionLabel $selected={objetivo === o.value}>{o.label}</OptionLabel>
+              <OptionSub>{o.sub}</OptionSub>
+            </OptionCard>
+          ))}
+        </ObjectiveGrid>
+      </CardSection>
 
-      <Divider />
-      <SectionLabel>Objetivo principal</SectionLabel>
-      <ChipGroup>
-        {OBJETIVOS.map((o) => (
-          <Chip key={o} $selected={objetivo === o} onClick={() => setObjetivo(o)}>{o}</Chip>
-        ))}
-      </ChipGroup>
+      {/* ── Historial ─────────────────────────────────────────── */}
+      <CardSection>
+        <CardSectionTitle>Nível de atividade atual</CardSectionTitle>
+        <OptionGrid $cols={4}>
+          {PRATICA_OPTIONS.map((o) => (
+            <OptionCard
+              key={o.value}
+              $selected={pratica === o.value}
+              onClick={() => setPratica(o.value)}
+            >
+              <OptionIcon>{o.icon}</OptionIcon>
+              <OptionLabel $selected={pratica === o.value}>{o.label}</OptionLabel>
+              <OptionSub>{o.sub}</OptionSub>
+            </OptionCard>
+          ))}
+        </OptionGrid>
 
-      <Divider />
-      <SectionLabel>Problemas ortopédicos / lesões</SectionLabel>
-      <ChipGroup>
-        {LESOES.map((l) => (
-          <Chip key={l} $selected={lesoes.includes(l)} $warn onClick={() => toggle(l, lesoes, setLesoes)}>{LESAO_LABELS[l]}</Chip>
-        ))}
-        <Chip $selected={lesoes.length === 0} onClick={() => setLesoes([])}>Sem lesões</Chip>
-      </ChipGroup>
+        <div style={{ marginTop: 20 }}>
+          <CardSectionTitle>Há quanto tempo treina?</CardSectionTitle>
+          <TempoGrid>
+            {TEMPO_TREINO.map((t) => (
+              <TempoOption
+                key={t.value}
+                $selected={tempoTreino === t.value.toString()}
+                onClick={() => setTempoTreino(t.value.toString())}
+              >
+                {t.label}
+              </TempoOption>
+            ))}
+          </TempoGrid>
+        </div>
+      </CardSection>
 
-      <Divider />
-      <SectionLabel>Equipamento disponível</SectionLabel>
-      <ChipGroup>
-        {EQUIPAMENTOS.map((e) => (
-          <Chip key={e} $selected={equipamento.includes(e)} onClick={() => toggle(e, equipamento, setEquipamento)}>{EQUIP_LABELS[e]}</Chip>
-        ))}
-      </ChipGroup>
+      {/* ── Disponibilidade ───────────────────────────────────── */}
+      <CardSection>
+        <CardSectionTitle>Disponibilidade semanal</CardSectionTitle>
+
+        <AvailRow>
+          <AvailGroup>
+            <AvailLabel>Dias por semana</AvailLabel>
+            <StepperRow>
+              {DIAS.map((d) => (
+                <StepperOption
+                  key={d}
+                  $selected={diasSemana === d}
+                  onClick={() => setDiasSemana(d)}
+                >
+                  {d}
+                </StepperOption>
+              ))}
+            </StepperRow>
+          </AvailGroup>
+
+          <AvailGroup>
+            <AvailLabel>Duração por sessão</AvailLabel>
+            <StepperRow>
+              {DURACAO.map((d) => (
+                <DuracaoOption
+                  key={d}
+                  $selected={duracaoSessao === d}
+                  onClick={() => setDuracaoSessao(d)}
+                >
+                  {d}'
+                </DuracaoOption>
+              ))}
+            </StepperRow>
+          </AvailGroup>
+        </AvailRow>
+      </CardSection>
+
+      {/* ── Lesões ────────────────────────────────────────────── */}
+      <CardSection>
+        <CardSectionTitle>Problemas ortopédicos / lesões</CardSectionTitle>
+        <ChipGroup>
+          {LESOES.map((l) => (
+            <Chip key={l} $selected={lesoes.includes(l)} $warn onClick={() => toggle(l, lesoes, setLesoes)}>
+              {LESAO_LABELS[l]}
+            </Chip>
+          ))}
+          <Chip $selected={lesoes.length === 0} onClick={() => setLesoes([])}>
+            Sem lesões
+          </Chip>
+        </ChipGroup>
+      </CardSection>
+
+      {/* ── Equipamento ───────────────────────────────────────── */}
+      <CardSection>
+        <CardSectionTitle>Equipamento disponível</CardSectionTitle>
+        <ChipGroup>
+          {EQUIPAMENTOS.map((e) => (
+            <Chip key={e} $selected={equipamento.includes(e)} onClick={() => toggle(e, equipamento, setEquipamento)}>
+              {EQUIP_LABELS[e]}
+            </Chip>
+          ))}
+        </ChipGroup>
+      </CardSection>
 
       {error && <ErrorMsg>{error}</ErrorMsg>}
+
       <BtnRow>
         <BtnSecondary onClick={() => dispatch(prevStep())}>← Voltar</BtnSecondary>
         <BtnPrimary onClick={handleNext}>Continuar →</BtnPrimary>
@@ -105,3 +220,67 @@ export const Step2Sports: React.FC = () => {
     </div>
   );
 };
+
+// ─── Local styles ─────────────────────────────────────────────────────────────
+
+const ObjectiveGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  @media (max-width: 640px) { grid-template-columns: 1fr 1fr; }
+`;
+
+const TempoGrid = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const TempoOption = styled.button<{ $selected?: boolean }>`
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1.5px solid ${({ $selected }) => ($selected ? '#c8f542' : '#1e1e28')};
+  background: ${({ $selected }) => ($selected ? 'rgba(200,245,66,0.07)' : '#0e0e15')};
+  color: ${({ $selected }) => ($selected ? '#c8f542' : '#555566')};
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { border-color: #c8f542; color: #e8e8f0; }
+`;
+
+const AvailRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+`;
+
+const AvailGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const AvailLabel = styled.div`
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #444455;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+`;
+
+const DuracaoOption = styled.button<{ $selected?: boolean }>`
+  width: 64px;
+  height: 52px;
+  border-radius: 10px;
+  border: 1.5px solid ${({ $selected }) => ($selected ? '#c8f542' : '#1e1e28')};
+  background: ${({ $selected }) => ($selected ? 'rgba(200,245,66,0.07)' : '#111118')};
+  color: ${({ $selected }) => ($selected ? '#c8f542' : '#555566')};
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { border-color: #c8f542; color: #e8e8f0; }
+`;

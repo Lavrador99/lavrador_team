@@ -42,5 +42,8 @@ export const programsApi = {
   archive: async (id: string): Promise<void> => {
     await api.patch(`/programs/${id}/archive`);
   },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/programs/${id}`);
+  },
   exportJson: (id: string): string => `/api/programs/${id}/export`,
 };

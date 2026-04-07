@@ -69,6 +69,11 @@ export class ProgramsService {
     return this.repo.updateStatus(id, "ARCHIVED");
   }
 
+  async delete(id: string) {
+    await this.findById(id);
+    return this.repo.delete(id);
+  }
+
   async updateSelections(id: string, dto: UpdateSelectionsDto) {
     await this.findById(id);
     return this.repo.updateSelections(

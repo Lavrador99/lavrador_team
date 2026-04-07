@@ -5,7 +5,7 @@ import {
 import styled from 'styled-components';
 
 interface Props {
-  data: { week: string; total: number; completed: number; cancelled: number }[];
+  data: { week: string; completed: number; cancelled: number; noShow?: number }[];
   title?: string;
 }
 

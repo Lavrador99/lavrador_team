@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import styled from "styled-components";
 import { useClientStats } from "../../hooks/useStats";
 import { clientsApi } from "../../utils/api/clients.api";
+import { programsApi } from "../../utils/api/prescription.api";
 import { ClientProgressTab } from "./components/ClientProgressTab";
 
 const SESSION_STATUS_LABEL: Record<string, string> = {
@@ -35,6 +36,7 @@ export const ClientDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "overview" | "programs" | "sessions" | "assessments" | "progress"
   >("overview");
+  const [deletingProgramId, setDeletingProgramId] = useState<string | null>(null);
   const { stats: clientStats } = useClientStats(clientId ?? "");
 
   useEffect(() => {
@@ -57,6 +59,20 @@ export const ClientDetailPage: React.FC = () => {
         <LoadingMsg>Cliente não encontrado.</LoadingMsg>
       </Page>
     );
+
+  const handleDeleteProgram = async (programId: string) => {
+    if (!window.confirm("Eliminar este plano permanentemente? Esta acção não pode ser desfeita.")) return;
+    setDeletingProgramId(programId);
+    try {
+      await programsApi.delete(programId);
+      setClient((prev: any) => ({
+        ...prev,
+        programs: prev.programs.filter((p: any) => p.id !== programId),
+      }));
+    } finally {
+      setDeletingProgramId(null);
+    }
+  };
 
   const upcomingSessions = (client.sessions ?? []).filter(
     (s: any) =>
@@ -235,6 +251,27 @@ export const ClientDetailPage: React.FC = () => {
                     </ExTag>
                   ))}
                 </ProgramExercises>
+                <ProgramActions>
+                  {p.status === "ACTIVE" && (
+                    <SmallBtn onClick={() => programsApi.archive(p.id).then(() =>
+                      setClient((prev: any) => ({
+                        ...prev,
+                        programs: prev.programs.map((pr: any) =>
+                          pr.id === p.id ? { ...pr, status: "ARCHIVED" } : pr
+                        ),
+                      }))
+                    )}>
+                      Arquivar
+                    </SmallBtn>
+                  )}
+                  <SmallBtn
+                    $danger
+                    disabled={deletingProgramId === p.id}
+                    onClick={() => handleDeleteProgram(p.id)}
+                  >
+                    {deletingProgramId === p.id ? "A eliminar..." : "Eliminar"}
+                  </SmallBtn>
+                </ProgramActions>
               </ProgramCard>
             ))
           )}
@@ -301,7 +338,7 @@ export const ClientDetailPage: React.FC = () => {
       {activeTab === "progress" && (
         <TabContent>
           {clientStats ? (
-            <ClientProgressTab stats={clientStats} />
+            <ClientProgressTab stats={clientStats} clientId={clientId ?? ''} />
           ) : (
             <Empty>A carregar estatísticas de progresso...</Empty>
           )}
@@ -604,4 +641,26 @@ const BtnLink = styled.span`
   &:hover {
     text-decoration: underline;
   }
+`;
+const ProgramActions = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #1e1e28;
+`;
+const SmallBtn = styled.button<{ $danger?: boolean }>`
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  ${({ $danger }) =>
+    $danger
+      ? `background: transparent; border: 1px solid rgba(255,59,59,0.3); color: #ff6b6b;
+         &:hover:not(:disabled) { background: rgba(255,59,59,0.08); border-color: #ff3b3b; }
+         &:disabled { opacity: 0.4; cursor: not-allowed; }`
+      : `background: transparent; border: 1px solid #2a2a35; color: #666677;
+         &:hover { border-color: #c8f542; color: #c8f542; }`}
 `;

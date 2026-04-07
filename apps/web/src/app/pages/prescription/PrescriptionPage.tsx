@@ -10,7 +10,10 @@ import {
 import { clientsApi } from "../../utils/api/clients.api";
 import {
   PageWrapper,
-  StepDot,
+  StepBody,
+  StepCircle,
+  StepItem,
+  StepLabel,
   StepsNav,
   WizardHeader,
   WizardSubtitle,
@@ -24,13 +27,14 @@ import { Step5Review } from "./steps/Step5Review";
 import { Step6Plan } from "./steps/Step6Plan";
 
 const STEPS = [
-  "Dados Pessoais",
-  "Anamnese",
-  "Avaliação Física",
-  "Exercícios",
-  "Revisão",
-  "Plano",
+  { label: "Pessoal", short: "01" },
+  { label: "Anamnese", short: "02" },
+  { label: "Físico", short: "03" },
+  { label: "Exercícios", short: "04" },
+  { label: "Revisão", short: "05" },
+  { label: "Plano", short: "06" },
 ];
+
 const STEP_COMPONENTS = [
   Step1Personal,
   Step2Sports,
@@ -47,7 +51,6 @@ export const PrescriptionPage: React.FC = () => {
   );
   const [searchParams] = useSearchParams();
 
-  // Lista de clientes para o selector
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [selectedClientId, setSelectedClientId] = useState("");
@@ -61,7 +64,6 @@ export const PrescriptionPage: React.FC = () => {
           .map((u) => ({ id: u.client!.id, name: u.client!.name }));
         setClients(mapped);
 
-        // Se veio por query param, pré-selecciona
         const qClientId = searchParams.get("clientId");
         if (qClientId) {
           setSelectedClientId(qClientId);
@@ -82,8 +84,8 @@ export const PrescriptionPage: React.FC = () => {
   };
 
   const StepComponent = STEP_COMPONENTS[currentStep];
+  const activeClient = clients.find((c) => c.id === clientId);
 
-  // Mostrar selector se não há cliente seleccionado
   if (!clientId) {
     return (
       <PageWrapper>
@@ -93,37 +95,36 @@ export const PrescriptionPage: React.FC = () => {
         </WizardHeader>
 
         <ClientSelector>
-          <SelectorLabel>Selecionar Cliente</SelectorLabel>
+          <SelectorLabel>Com quem vais trabalhar?</SelectorLabel>
           {loadingClients ? (
             <LoadingMsg>A carregar clientes...</LoadingMsg>
           ) : clients.length === 0 ? (
             <EmptyMsg>
-              Nenhum cliente registado. Cria primeiro um utilizador com role
-              CLIENT.
+              Nenhum cliente registado. Cria primeiro um utilizador com role CLIENT.
             </EmptyMsg>
           ) : (
             <>
-              <ClientList>
+              <ClientGrid>
                 {clients.map((c) => (
-                  <ClientItem
+                  <ClientCard
                     key={c.id}
                     $selected={selectedClientId === c.id}
                     onClick={() => handleClientSelect(c.id)}
                   >
-                    <ClientAvatar>{c.name[0].toUpperCase()}</ClientAvatar>
+                    <ClientAvatar $selected={selectedClientId === c.id}>
+                      {c.name[0].toUpperCase()}
+                    </ClientAvatar>
                     <ClientName>{c.name}</ClientName>
                     {selectedClientId === c.id && (
-                      <SelectedMark>✓</SelectedMark>
+                      <SelectedCheck>✓</SelectedCheck>
                     )}
-                  </ClientItem>
+                  </ClientCard>
                 ))}
-              </ClientList>
+              </ClientGrid>
 
               {selectedClientId && (
-                <StartBtn
-                  onClick={() => dispatch(setClientId(selectedClientId))}
-                >
-                  Iniciar Prescrição →
+                <StartBtn onClick={() => dispatch(setClientId(selectedClientId))}>
+                  Iniciar prescrição →
                 </StartBtn>
               )}
             </>
@@ -137,23 +138,27 @@ export const PrescriptionPage: React.FC = () => {
     <PageWrapper>
       <WizardHeader>
         <WizardTitle>Motor de Prescrição</WizardTitle>
-        <WizardSubtitle>
-          // {clients.find((c) => c.id === clientId)?.name ?? clientId} ·{" "}
-          {STEPS[currentStep]} · passo {currentStep + 1}/{STEPS.length}
-        </WizardSubtitle>
+        {activeClient && (
+          <WizardSubtitle>// {activeClient.name}</WizardSubtitle>
+        )}
       </WizardHeader>
 
       <StepsNav>
-        {STEPS.map((_, i) => (
-          <StepDot
-            key={i}
-            $active={i === currentStep}
-            $done={i < currentStep}
-          />
+        {STEPS.map((step, i) => (
+          <StepItem key={i} $active={i === currentStep} $done={i < currentStep}>
+            <StepCircle $active={i === currentStep} $done={i < currentStep}>
+              {i < currentStep ? "✓" : i + 1}
+            </StepCircle>
+            <StepLabel $active={i === currentStep} $done={i < currentStep}>
+              {step.label}
+            </StepLabel>
+          </StepItem>
         ))}
       </StepsNav>
 
-      <StepComponent />
+      <StepBody key={currentStep}>
+        <StepComponent />
+      </StepBody>
     </PageWrapper>
   );
 };
@@ -161,91 +166,102 @@ export const PrescriptionPage: React.FC = () => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const ClientSelector = styled.div`
-  max-width: 520px;
+  max-width: 560px;
 `;
+
 const SelectorLabel = styled.div`
-  font-family: "DM Mono", monospace;
-  font-size: 11px;
-  color: #666677;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-`;
-const LoadingMsg = styled.p`
-  font-family: "DM Mono", monospace;
-  font-size: 13px;
-  color: #666677;
-`;
-const EmptyMsg = styled.p`
-  font-family: "DM Mono", monospace;
-  font-size: 13px;
-  color: #ff8c5a;
-  background: rgba(255, 107, 53, 0.06);
-  border: 1px solid rgba(255, 107, 53, 0.2);
-  border-radius: 8px;
-  padding: 16px 20px;
-  line-height: 1.5;
-`;
-const ClientList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #e8e8f0;
   margin-bottom: 24px;
 `;
-const ClientItem = styled.div<{ $selected?: boolean }>`
+
+const LoadingMsg = styled.p`
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  color: #444455;
+`;
+
+const EmptyMsg = styled.p`
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: #ff8c5a;
+  background: rgba(255, 107, 53, 0.06);
+  border: 1px solid rgba(255, 107, 53, 0.18);
+  border-radius: 10px;
+  padding: 18px 22px;
+  line-height: 1.5;
+`;
+
+const ClientGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 28px;
+`;
+
+const ClientCard = styled.div<{ $selected?: boolean }>`
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 18px;
+  padding: 16px 18px;
   background: ${({ $selected }) =>
-    $selected ? "rgba(200,245,66,0.06)" : "#111118"};
-  border: 1px solid ${({ $selected }) => ($selected ? "#c8f542" : "#2a2a35")};
-  border-radius: 10px;
+    $selected ? "rgba(200,245,66,0.05)" : "#111118"};
+  border: 1.5px solid ${({ $selected }) => ($selected ? "#c8f542" : "#1e1e28")};
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.18s;
   &:hover {
-    border-color: rgba(200, 245, 66, 0.4);
+    border-color: rgba(200, 245, 66, 0.5);
   }
 `;
-const ClientAvatar = styled.div`
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: rgba(200, 245, 66, 0.1);
-  border: 1px solid rgba(200, 245, 66, 0.2);
+
+const ClientAvatar = styled.div<{ $selected?: boolean }>`
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: ${({ $selected }) =>
+    $selected ? "rgba(200,245,66,0.12)" : "rgba(200,245,66,0.06)"};
+  border: 1px solid rgba(200, 245, 66, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: "Syne", sans-serif;
+  font-family: 'Syne', sans-serif;
   font-size: 18px;
   font-weight: 800;
   color: #c8f542;
   flex-shrink: 0;
 `;
+
 const ClientName = styled.div`
-  font-family: "Syne", sans-serif;
-  font-size: 15px;
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
   font-weight: 700;
   color: #e8e8f0;
   flex: 1;
 `;
-const SelectedMark = styled.div`
-  font-size: 18px;
+
+const SelectedCheck = styled.div`
+  font-size: 16px;
   color: #c8f542;
 `;
+
 const StartBtn = styled.button`
   background: #c8f542;
   color: #0a0a0f;
   border: none;
-  border-radius: 6px;
-  padding: 14px 28px;
-  font-family: "Syne", sans-serif;
+  border-radius: 8px;
+  padding: 15px 32px;
+  font-family: 'Syne', sans-serif;
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
-  letter-spacing: 1px;
-  transition: background 0.2s;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
   &:hover {
     background: #d4ff55;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(200,245,66,0.2);
   }
 `;

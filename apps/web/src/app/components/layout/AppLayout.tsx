@@ -10,6 +10,7 @@ interface NavItem {
   label: string;
   icon: string;
   adminOnly?: boolean;
+  clientOnly?: boolean;
   exact?: boolean;
 }
 
@@ -19,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/schedule',     label: 'Agenda',          icon: '◫' },
   { path: '/prescription', label: 'Prescrição',      icon: '⚡', adminOnly: true },
   { path: '/exercises',    label: 'Exercícios',      icon: '◈' },
+  { path: '/my-plan',      label: 'O meu plano',     icon: '▦', clientOnly: true },
 ];
 
 export const AppLayout: React.FC = () => {
@@ -32,9 +34,11 @@ export const AppLayout: React.FC = () => {
     navigate('/login');
   };
 
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => !item.adminOnly || user?.role === 'ADMIN',
-  );
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (item.adminOnly && user?.role !== 'ADMIN') return false;
+    if (item.clientOnly && user?.role !== 'CLIENT') return false;
+    return true;
+  });
 
   return (
     <Layout>

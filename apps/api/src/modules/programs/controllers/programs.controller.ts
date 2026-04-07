@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Get, Patch, Param,
+  Controller, Post, Get, Patch, Delete, Param,
   Body, UseGuards, HttpCode, HttpStatus, Res,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -36,6 +36,12 @@ export class ProgramsController {
     return this.programsService.archive(id);
   }
 
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  delete(@Param('id') id: string) {
+    return this.programsService.delete(id);
+  }
+
   @Patch(':id/exercises')
   updateSelections(@Param('id') id: string, @Body() dto: UpdateSelectionsDto) {
     return this.programsService.updateSelections(id, dto);
@@ -46,6 +52,6 @@ export class ProgramsController {
     const data = await this.programsService.exportJson(id);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="program-${id}.json"`);
-    return res.json(data);
+    res.json(data);
   }
 }

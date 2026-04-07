@@ -94,13 +94,14 @@ export const ExerciseGrid = styled.div`
   gap: 16px;
 `;
 
-export const ExerciseCard = styled.div`
+export const ExerciseCard = styled.div<{ $active?: boolean }>`
   background: #111118;
-  border: 1px solid #2a2a35;
+  border: 1px solid ${({ $active }) => ($active ? 'rgba(200,245,66,0.5)' : '#2a2a35')};
   border-radius: 10px;
   overflow: hidden;
-  transition: border-color 0.2s, transform 0.2s;
-  cursor: default;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  box-shadow: ${({ $active }) => ($active ? '0 0 0 1px rgba(200,245,66,0.2)' : 'none')};
 
   &:hover {
     border-color: rgba(200, 245, 66, 0.3);
