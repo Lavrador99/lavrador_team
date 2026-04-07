@@ -116,10 +116,21 @@ export class StatsService {
     };
   }
 
+  // ─── Stats do próprio cliente (resolve userId → clientId) ──────────────
+
+  async getMyStats(userId: string) {
+    const client = await this.prisma.client.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!client) return null;
+    return this.getClientStats(client.id);
+  }
+
   // ─── Progresso individual ───────────────────────────────────────────────
 
   async getClientStats(clientId: string) {
-    const [client, sessions, assessments, programs] = await Promise.all([
+    const [client, sessions, assessments, programs, workoutLogs] = await Promise.all([
       this.prisma.client.findUnique({
         where: { id: clientId },
         select: { id: true, name: true },
@@ -138,6 +149,12 @@ export class StatsService {
         where: { clientId },
         select: { id: true, name: true, status: true },
         orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.workoutLog.findMany({
+        where: { clientId },
+        select: { id: true, date: true, durationMin: true },
+        orderBy: { date: "desc" },
+        take: 5,
       }),
     ]);
 
@@ -175,6 +192,12 @@ export class StatsService {
       activeProgram,
       assessmentHistory,
       sessionHistory,
+      totalWorkoutLogs: workoutLogs.length > 0 ? await this.prisma.workoutLog.count({ where: { clientId } }) : 0,
+      recentWorkoutLogs: workoutLogs.map((l) => ({
+        id: l.id,
+        date: l.date.toISOString(),
+        durationMin: l.durationMin,
+      })),
     };
   }
 

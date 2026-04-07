@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store';
+import { workoutTemplatesApi } from '../../utils/api/workout-templates.api';
 import {
   initNew, setName, setDayLabel, addBlock, reorderBlocks,
   saveWorkout, loadWorkout, previewDuration, clearError,
@@ -84,6 +85,20 @@ export const WorkoutEditorPage: React.FC = () => {
     }
   };
 
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const handleSaveAsTemplate = async () => {
+    if (!name || blocks.length === 0) return;
+    setSavingTemplate(true);
+    try {
+      await workoutTemplatesApi.create({ name, blocks, isPublic: false });
+      alert(`Template "${name}" guardado!`);
+    } catch {
+      alert('Erro ao guardar template.');
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
   const backPath = programId
     ? `/workouts?programId=${programId}&clientId=${clientId}`
     : -1 as any;
@@ -111,6 +126,11 @@ export const WorkoutEditorPage: React.FC = () => {
               ⏱ ~{durationPreview.totalMin} min
               {durationPreview.warning && ' ⚠'}
             </DurationBadge>
+          )}
+          {blocks.length > 0 && (
+            <TemplateBtn onClick={handleSaveAsTemplate} disabled={savingTemplate}>
+              {savingTemplate ? '...' : '◫ Template'}
+            </TemplateBtn>
           )}
           <SaveBtn onClick={handleSave} disabled={saving || !isDirty}>
             {saving ? 'A guardar...' : isDirty ? 'Guardar' : 'Guardado ✓'}
@@ -188,6 +208,7 @@ const DayInput = styled.input`background:transparent; border:none; color:#666677
 const TopActions = styled.div`display:flex; align-items:center; gap:12px; flex-shrink:0;`;
 const DurationBadge = styled.div<{ $warn?: boolean }>`font-family:'DM Mono',monospace; font-size:11px; padding:5px 12px; border-radius:4px; background:${p=>p.$warn?'rgba(255,107,53,0.1)':'rgba(200,245,66,0.08)'}; color:${p=>p.$warn?'#ff8c5a':'#c8f542'}; border:1px solid ${p=>p.$warn?'rgba(255,107,53,0.2)':'rgba(200,245,66,0.2)'};`;
 const SaveBtn = styled.button`background:#c8f542; color:#0a0a0f; border:none; border-radius:6px; padding:10px 20px; font-family:'Syne',sans-serif; font-weight:700; font-size:13px; cursor:pointer; transition:all .2s; &:hover:not(:disabled){background:#d4ff55;} &:disabled{opacity:.5;cursor:default;}`;
+const TemplateBtn = styled.button`background:transparent; border:1px solid #2a2a35; color:#666677; border-radius:6px; padding:10px 14px; font-family:'DM Mono',monospace; font-size:11px; cursor:pointer; transition:all .15s; &:hover:not(:disabled){border-color:#c8f542;color:#c8f542;} &:disabled{opacity:.4;}`;
 const WarnBanner = styled.div`background:rgba(255,107,53,0.08); border-bottom:1px solid rgba(255,107,53,0.2); padding:10px 24px; font-family:'DM Mono',monospace; font-size:12px; color:#ff8c5a;`;
 const ErrorBanner = styled.div`background:rgba(255,59,59,0.08); border-bottom:1px solid rgba(255,59,59,0.2); padding:10px 24px; font-family:'DM Mono',monospace; font-size:12px; color:#ff6b6b; cursor:pointer;`;
 const Canvas = styled.div`flex:1; padding:24px; overflow-y:auto;`;

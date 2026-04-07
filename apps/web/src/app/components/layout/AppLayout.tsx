@@ -21,6 +21,10 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/prescription', label: 'Prescrição',      icon: '⚡', adminOnly: true },
   { path: '/exercises',    label: 'Exercícios',      icon: '◈' },
   { path: '/my-plan',      label: 'O meu plano',     icon: '▦', clientOnly: true },
+  { path: '/messages',     label: 'Mensagens',       icon: '◷' },
+  { path: '/habits',       label: 'Hábitos',         icon: '◉', clientOnly: true },
+  { path: '/invoices',     label: 'Facturação',      icon: '◈', adminOnly: true },
+  { path: '/templates',    label: 'Templates',       icon: '◰', adminOnly: true },
 ];
 
 export const AppLayout: React.FC = () => {

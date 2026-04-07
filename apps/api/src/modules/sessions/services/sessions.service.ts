@@ -2,19 +2,48 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { SessionsRepository } from '../repositories/sessions.repository';
 import { CreateSessionDto, UpdateSessionDto, SessionFiltersDto } from '../types/sessions.dto';
 import { SessionType } from '@prisma/client';
+import { EmailService } from '../../email/email.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class SessionsService {
-  constructor(private readonly repo: SessionsRepository) {}
+  constructor(
+    private readonly repo: SessionsRepository,
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   async create(dto: CreateSessionDto) {
-    return this.repo.create({
+    const session = await this.repo.create({
       clientId: dto.clientId,
       programId: dto.programId,
       scheduledAt: new Date(dto.scheduledAt),
       duration: dto.duration ?? 60,
       type: dto.type ?? SessionType.TRAINING,
       notes: dto.notes,
+    });
+
+    // Send email reminder (fire-and-forget)
+    this.sendSessionEmail(dto.clientId, session).catch(() => {});
+
+    return session;
+  }
+
+  private async sendSessionEmail(clientId: string, session: any) {
+    const client = await this.prisma.client.findUnique({
+      where: { id: clientId },
+      include: { user: { select: { email: true } } },
+    });
+    const email = (client as any)?.user?.email;
+    if (!email) return;
+
+    const date = new Date(session.scheduledAt);
+    await this.emailService.sendSessionReminder(email, {
+      clientName: client!.name ?? 'Cliente',
+      date: date.toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long' }),
+      time: date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+      duration: session.duration,
+      type: session.type,
     });
   }
 

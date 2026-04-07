@@ -7,6 +7,11 @@ export const statsApi = {
     return data;
   },
 
+  getMy: async (): Promise<ClientStats> => {
+    const { data } = await api.get('/stats/my');
+    return data;
+  },
+
   getClient: async (clientId: string): Promise<ClientStats> => {
     const { data } = await api.get(`/stats/client/${clientId}`);
     return data;

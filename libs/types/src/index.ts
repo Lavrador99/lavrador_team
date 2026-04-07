@@ -320,10 +320,12 @@ export interface ClientStats {
   }[];
   sessionHistory: {
     week: string;
+    total: number;
     completed: number;
     cancelled: number;
-    noShow: number;
   }[];
+  totalWorkoutLogs?: number;
+  recentWorkoutLogs?: { id: string; date: string; durationMin?: number | null }[];
 }
 
 export interface SessionsDistribution {

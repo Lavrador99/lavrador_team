@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { authApi } from '../../../utils/api/auth.api';
 import { sessionsApi } from '../../../utils/api/clients.api';
-import { useClientStats } from '../../../hooks/useStats';
+import { useMyStats } from '../../../hooks/useStats';
 import { SessionsBarChart } from './SessionsBarChart';
 import { AttendanceGauge } from './AttendanceGauge';
 import { SessionDto } from '@libs/types';
@@ -32,29 +32,25 @@ const LEVEL_LABEL: Record<string, string> = {
 };
 
 export const ClientDashboard: React.FC = () => {
-  const [clientId, setClientId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { stats, loading: loadingStats } = useMyStats();
   const [upcomingSessions, setUpcomingSessions] = useState<SessionDto[]>([]);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-
-  const { stats, loading: loadingStats } = useClientStats(clientId ?? '');
-  const loading = loadingProfile || loadingStats;
+  const [loadingSessions, setLoadingSessions] = useState(true);
 
   useEffect(() => {
-    authApi.getMe()
-      .then((me) => {
-        const cId = me.client?.id;
-        if (!cId) return [];
-        setClientId(cId);
-        return sessionsApi.getUpcoming(cId);
-      })
-      .then((sessions) => setUpcomingSessions(sessions as SessionDto[]))
-      .finally(() => setLoadingProfile(false));
-  }, []);
+    if (!stats?.clientId) return;
+    sessionsApi.getUpcoming(stats.clientId)
+      .then(setUpcomingSessions)
+      .catch(() => {})
+      .finally(() => setLoadingSessions(false));
+  }, [stats?.clientId]);
+
+  const loading = loadingStats || loadingSessions;
 
   const kpis = [
     {
-      label: 'Sessões realizadas',
-      val: stats?.completedSessions ?? '—',
+      label: 'Treinos registados',
+      val: stats?.totalWorkoutLogs ?? '—',
       color: '#c8f542',
     },
     {
@@ -77,12 +73,21 @@ export const ClientDashboard: React.FC = () => {
 
   return (
     <Container>
+      {/* ── Quick action ────────────────────────────────────────────────── */}
+      <QuickAction onClick={() => navigate('/my-plan')}>
+        <QuickActionIcon>▦</QuickActionIcon>
+        <QuickActionText>
+          <QuickActionTitle>Ver o meu plano de treino</QuickActionTitle>
+          <QuickActionSub>Inicia o treino de hoje →</QuickActionSub>
+        </QuickActionText>
+      </QuickAction>
+
       {/* ── KPI cards ──────────────────────────────────────────────────── */}
       <KpiGrid>
         {kpis.map(({ label, val, color, small }) => (
           <KpiCard key={label} $color={color}>
             <KpiVal $color={color} $small={!!small}>
-              {loading ? '—' : val}
+              {loadingStats ? '—' : val}
             </KpiVal>
             <KpiLabel>{label}</KpiLabel>
           </KpiCard>
@@ -101,6 +106,31 @@ export const ClientDashboard: React.FC = () => {
           <AttendanceGauge rate={stats?.attendanceRate ?? 0} />
         </ChartSide>
       </ChartsRow>
+
+      {/* ── Treinos recentes ────────────────────────────────────────────── */}
+      {stats?.recentWorkoutLogs && stats.recentWorkoutLogs.length > 0 && (
+        <>
+          <SectionTitle>Treinos recentes</SectionTitle>
+          <WorkoutLogList>
+            {stats.recentWorkoutLogs.map((log) => (
+              <WorkoutLogRow key={log.id}>
+                <LogDot />
+                <LogInfo>
+                  <LogDate>
+                    {new Date(log.date).toLocaleDateString('pt-PT', {
+                      weekday: 'long', day: '2-digit', month: 'long',
+                    })}
+                  </LogDate>
+                  {log.durationMin && <LogMeta>{log.durationMin} min</LogMeta>}
+                </LogInfo>
+                <LogRelative>
+                  {formatDistanceToNow(new Date(log.date), { addSuffix: true, locale: pt })}
+                </LogRelative>
+              </WorkoutLogRow>
+            ))}
+          </WorkoutLogList>
+        </>
+      )}
 
       {/* ── Próximas sessões ────────────────────────────────────────────── */}
       <SectionTitle>Próximas sessões</SectionTitle>
@@ -169,6 +199,46 @@ export const ClientDashboard: React.FC = () => {
 
 const Container = styled.div``;
 
+const QuickAction = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(200, 245, 66, 0.06);
+  border: 1px solid rgba(200, 245, 66, 0.2);
+  border-radius: 12px;
+  padding: 18px 20px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: all 0.2s;
+  &:hover {
+    background: rgba(200, 245, 66, 0.1);
+    border-color: rgba(200, 245, 66, 0.4);
+  }
+`;
+
+const QuickActionIcon = styled.div`
+  font-size: 24px;
+  color: #c8f542;
+  flex-shrink: 0;
+`;
+
+const QuickActionText = styled.div`flex: 1;`;
+
+const QuickActionTitle = styled.div`
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e8e8f0;
+`;
+
+const QuickActionSub = styled.div`
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #c8f542;
+  margin-top: 3px;
+  letter-spacing: 0.5px;
+`;
+
 const KpiGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -227,6 +297,54 @@ const EmptyMsg = styled.div`
   font-size: 12px;
   color: #444455;
   padding: 16px 0;
+`;
+
+const WorkoutLogList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 24px;
+`;
+
+const WorkoutLogRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #111118;
+  border: 1px solid #1e1e28;
+  border-radius: 6px;
+  padding: 10px 14px;
+`;
+
+const LogDot = styled.div`
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c8f542;
+  flex-shrink: 0;
+`;
+
+const LogInfo = styled.div`flex: 1;`;
+
+const LogDate = styled.div`
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: #e8e8f0;
+  text-transform: capitalize;
+`;
+
+const LogMeta = styled.div`
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #444455;
+  margin-top: 2px;
+`;
+
+const LogRelative = styled.div`
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #666677;
+  flex-shrink: 0;
 `;
 
 const SessionList = styled.div`

@@ -15,12 +15,14 @@ import {
   LoginDto,
   RegisterDto,
 } from "../types/auth.dto";
+import { EmailService } from "../../email/email.service";
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   async login(dto: LoginDto): Promise<AuthTokens> {
@@ -129,7 +131,7 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const role = dto.role === "ADMIN" ? Role.ADMIN : Role.CLIENT;
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         email: dto.email,
         passwordHash,
@@ -147,5 +149,10 @@ export class AuthService {
       },
       include: { client: true },
     });
+
+    // Send welcome email (fire-and-forget)
+    this.emailService.sendWelcome(dto.email, dto.name ?? dto.email.split('@')[0]).catch(() => {});
+
+    return user;
   }
 }

@@ -11,10 +11,16 @@ import {
   UpdateWorkoutDto,
 } from "../types/workouts.dto";
 import { calcWorkoutDuration } from "./workout-duration.calculator";
+import { EmailService } from "../../email/email.service";
+import { PrismaService } from "../../prisma/prisma.service";
 
 @Injectable()
 export class WorkoutsService {
-  constructor(private readonly repo: WorkoutsRepository) {}
+  constructor(
+    private readonly repo: WorkoutsRepository,
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   async create(dto: CreateWorkoutDto) {
     const blocks = dto.blocks ?? [];
@@ -54,7 +60,6 @@ export class WorkoutsService {
     // CLIENT só pode ver os seus
     if (requestingRole === "CLIENT" && requestingUserId) {
       if (workout.program?.clientId !== requestingUserId) {
-        // Verificar via clientId directamente
         if (workout.clientId !== requestingUserId) {
           throw new ForbiddenException("Sem acesso");
         }
@@ -65,7 +70,7 @@ export class WorkoutsService {
   }
 
   async update(id: string, dto: UpdateWorkoutDto) {
-    await this.findById(id);
+    const workout = await this.findById(id);
     const blocks = dto.blocks;
     let durationEstimatedMin: number | undefined;
 
@@ -74,10 +79,31 @@ export class WorkoutsService {
       durationEstimatedMin = totalMin;
     }
 
-    return this.repo.update(id, {
+    const updated = await this.repo.update(id, {
       ...dto,
       status: dto.status as WorkoutStatus | undefined,
       durationEstimatedMin,
+    });
+
+    // Send plan email when workout is activated
+    if (dto.status === 'ACTIVE' && workout.status !== 'ACTIVE') {
+      this.sendPlanEmail(workout.clientId, updated.name).catch(() => {});
+    }
+
+    return updated;
+  }
+
+  private async sendPlanEmail(clientId: string, workoutName: string) {
+    const client = await this.prisma.client.findUnique({
+      where: { id: clientId },
+      include: { user: { select: { email: true } } },
+    });
+    if (!client) return;
+    const user = (client as any).user;
+    if (!user?.email) return;
+    await this.emailService.sendPlanUpdated(user.email, {
+      clientName: client.name ?? user.name ?? 'Cliente',
+      planName: workoutName,
     });
   }
 
@@ -93,7 +119,7 @@ export class WorkoutsService {
 
   // ─── Logs ──────────────────────────────────────────────────────────────
   async createLog(dto: CreateWorkoutLogDto, clientId: string) {
-    const workout = await this.findById(dto.workoutId);
+    await this.findById(dto.workoutId);
 
     return this.repo.createLog({
       workoutId: dto.workoutId,

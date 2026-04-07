@@ -1,4 +1,11 @@
 {
   "name": "@lavrador-team/api",
-  "version": "0.0.1"
+  "version": "0.0.1",
+  "dependencies": {
+    "@nestjs/platform-socket.io": "^11.1.18",
+    "@nestjs/schedule": "^6.1.1",
+    "@nestjs/websockets": "^11.1.18",
+    "resend": "^6.10.0",
+    "socket.io": "^4.8.3"
+  }
 }

@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { WorkoutDto } from '@libs/types';
 import { workoutsApi } from '../../utils/api/workouts.api';
+import { pdf } from '@react-pdf/renderer';
+import { WorkoutPlanPdf } from '../../utils/pdf/WorkoutPlanPdf';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
 const BLOCK_TYPE_LABELS: Record<string, string> = {
   WARMUP: 'Aquecimento',
@@ -24,10 +29,34 @@ const BLOCK_TYPE_COLOR: Record<string, string> = {
 };
 
 export const MyPlanPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useSelector((s: RootState) => s.auth);
   const [workouts, setWorkouts] = useState<WorkoutDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(new Set());
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  const handleExportPdf = async () => {
+    if (!workouts.length) return;
+    setExportingPdf(true);
+    try {
+      const blob = await pdf(
+        <WorkoutPlanPdf
+          workouts={workouts}
+          clientName={user?.email?.split('@')[0] ?? 'Cliente'}
+        />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'plano-de-treino.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   useEffect(() => {
     workoutsApi.getMy()
@@ -83,6 +112,9 @@ export const MyPlanPage: React.FC = () => {
           <PageTitle>O meu plano</PageTitle>
           <PageSubtitle>// {workouts.length} treino{workouts.length !== 1 ? 's' : ''}</PageSubtitle>
         </div>
+        <PdfBtn onClick={handleExportPdf} disabled={exportingPdf || !workouts.length}>
+          {exportingPdf ? '...' : '↓ PDF'}
+        </PdfBtn>
       </PageHeader>
 
       <WorkoutList>
@@ -96,9 +128,14 @@ export const MyPlanPage: React.FC = () => {
                 </WorkoutDay>
                 <WorkoutName>{workout.name}</WorkoutName>
               </WorkoutMeta>
-              <DurationBadge>
-                ⏱ {workout.durationEstimatedMin} min
-              </DurationBadge>
+              <WorkoutActions>
+                <DurationBadge>
+                  ⏱ {workout.durationEstimatedMin} min
+                </DurationBadge>
+                <StartBtn onClick={() => navigate(`/my-plan/log/${workout.id}`)}>
+                  Iniciar treino →
+                </StartBtn>
+              </WorkoutActions>
             </WorkoutCardHeader>
 
             <BlockList>
@@ -450,4 +487,41 @@ const LoadingState = styled.div`
   color: #666677;
   font-family: 'DM Mono', monospace;
   font-size: 13px;
+`;
+
+const PdfBtn = styled.button`
+  background: transparent;
+  border: 1px solid #2a2a35;
+  color: #666677;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  &:hover:not(:disabled) { border-color: #c8f542; color: #c8f542; }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+`;
+
+const WorkoutActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+`;
+
+const StartBtn = styled.button`
+  background: #c8f542;
+  color: #0a0a0f;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 16px;
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+  &:hover { background: #d4ff55; }
 `;

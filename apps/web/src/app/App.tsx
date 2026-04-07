@@ -16,6 +16,12 @@ import { NewUserPage } from './pages/users-new/NewUserPage';
 import { WorkoutsListPage } from './pages/workouts/WorkoutsListPage';
 import { WorkoutEditorPage } from './pages/workouts/WorkoutEditorPage';
 import { MyPlanPage } from './pages/my-plan/MyPlanPage';
+import { WorkoutLoggerPage } from './pages/my-plan/WorkoutLoggerPage';
+import { MessagesPage } from './pages/messages/MessagesPage';
+import { InvoicesPage } from './pages/invoices/InvoicesPage';
+import { HabitsPage } from './pages/habits/HabitsPage';
+import { TemplatesPage } from './pages/templates/TemplatesPage';
+import { InstallPwaPrompt } from './components/InstallPwaPrompt';
 
 export const App: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -36,6 +42,9 @@ export const App: React.FC = () => {
             <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/exercises" element={<ExercisesPage />} />
             <Route path="/my-plan" element={<MyPlanPage />} />
+            <Route path="/my-plan/log/:workoutId" element={<WorkoutLoggerPage />} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/habits" element={<HabitsPage />} />
           </Route>
         </Route>
 
@@ -47,6 +56,8 @@ export const App: React.FC = () => {
             <Route path="/clients/new" element={<NewUserPage />} />
             <Route path="/prescription" element={<PrescriptionPage />} />
             <Route path="/workouts" element={<WorkoutsListPage />} />
+            <Route path="/invoices" element={<InvoicesPage />} />
+            <Route path="/templates" element={<TemplatesPage />} />
           </Route>
           {/* Editor fullscreen — sem sidebar */}
           <Route path="/workouts/editor" element={<WorkoutEditorPage />} />
@@ -55,6 +66,7 @@ export const App: React.FC = () => {
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
+      <InstallPwaPrompt />
     </BrowserRouter>
   );
 };

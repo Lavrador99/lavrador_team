@@ -30,3 +30,17 @@ export const useClientStats = (clientId: string) => {
 
   return { stats, loading };
 };
+
+export const useMyStats = () => {
+  const [stats, setStats] = useState<ClientStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    statsApi.getMy()
+      .then(setStats)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { stats, loading };
+};

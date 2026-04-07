@@ -111,10 +111,26 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  refreshTokens RefreshToken[]
-  client        Client?
+  refreshTokens  RefreshToken[]
+  client         Client?
+  sentMessages   Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
 
   @@map("users")
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  content    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("SentMessages",    fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("ReceivedMessages", fields: [toUserId],   references: [id], onDelete: Cascade)
+
+  @@map("messages")
 }
 
 model RefreshToken {
@@ -150,8 +166,110 @@ model Client {
   workouts        Workout[]
   workoutLogs     WorkoutLog[]
   personalRecords PersonalRecord[]
+  invoices        Invoice[]
+  habits          Habit[]
+  progressPhotos  ProgressPhoto[]
+  mealPlans       MealPlan[]
 
   @@map("clients")
+}
+
+// ─────────────────────────────────────────
+// PROGRESS PHOTOS
+// ─────────────────────────────────────────
+
+model ProgressPhoto {
+  id           String    @id @default(cuid())
+  clientId     String
+  assessmentId String?
+  url          String
+  angle        String?   // "frente" | "lado" | "costas"
+  takenAt      DateTime  @default(now())
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("progress_photos")
+}
+
+// ─────────────────────────────────────────
+// INVOICES
+// ─────────────────────────────────────────
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  clientId    String
+  amount      Float
+  currency    String        @default("EUR")
+  description String
+  status      InvoiceStatus @default(PENDING)
+  dueDate     DateTime
+  paidAt      DateTime?
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("invoices")
+}
+
+// ─────────────────────────────────────────
+// HABITS
+// ─────────────────────────────────────────
+
+model Habit {
+  id        String     @id @default(cuid())
+  clientId  String
+  name      String
+  icon      String?
+  frequency String     @default("DAILY")
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+
+  client Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  logs   HabitLog[]
+
+  @@map("habits")
+}
+
+model HabitLog {
+  id        String   @id @default(cuid())
+  habitId   String
+  date      DateTime
+  completed Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@map("habit_logs")
+}
+
+// ─────────────────────────────────────────
+// WORKOUT TEMPLATES
+// ─────────────────────────────────────────
+
+model WorkoutTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  tags        String[]
+  blocks      Json     // WorkoutBlock[]
+  createdBy   String   // userId do ADMIN
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("workout_templates")
 }
 
 // ─────────────────────────────────────────
@@ -373,4 +491,62 @@ model ExerciseSubstitution {
   createdAt    DateTime      @default(now())
 
   @@map("exercise_substitutions")
+}
+
+// ─────────────────────────────────────────
+// NUTRITION
+// ─────────────────────────────────────────
+
+model Food {
+  id       String  @id @default(cuid())
+  name     String
+  kcal     Float   // per 100g
+  protein  Float
+  carbs    Float
+  fat      Float
+  fiber    Float?
+  isCustom Boolean @default(false)
+
+  @@map("foods")
+}
+
+model MealPlan {
+  id        String       @id @default(cuid())
+  clientId  String
+  name      String
+  startDate DateTime
+  endDate   DateTime?
+  notes     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  client Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  days   MealPlanDay[]
+
+  @@map("meal_plans")
+}
+
+model MealPlanDay {
+  id        String        @id @default(cuid())
+  planId    String
+  dayOfWeek Int           // 0=Dom, 1=Seg ... 6=Sáb
+  label     String?       // ex: "Segunda"
+
+  plan  MealPlan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  meals MealPlanMeal[]
+
+  @@unique([planId, dayOfWeek])
+  @@map("meal_plan_days")
+}
+
+model MealPlanMeal {
+  id    String @id @default(cuid())
+  dayId String
+  name  String // "Pequeno-almoço"
+  items Json   // [{foodId, foodName, grams, kcal, protein, carbs, fat}]
+  kcal  Float  // calculado
+
+  day MealPlanDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+
+  @@map("meal_plan_meals")
 }

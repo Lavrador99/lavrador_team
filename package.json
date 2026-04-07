@@ -45,7 +45,8 @@
     "recharts": "^2.13.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "styled-components": "^6.1.13"
+    "styled-components": "^6.1.13",
+    "vite-plugin-pwa": "^1.2.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.8",
