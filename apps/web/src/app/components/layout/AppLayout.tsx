@@ -25,6 +25,8 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/habits',       label: 'Hábitos',         icon: '◉', clientOnly: true },
   { path: '/invoices',     label: 'Facturação',      icon: '◈', adminOnly: true },
   { path: '/templates',    label: 'Templates',       icon: '◰', adminOnly: true },
+  { path: '/my-nutrition', label: 'Nutrição',         icon: '◍', clientOnly: true },
+  { path: '/nutrition',    label: 'Nutrição',          icon: '◍', adminOnly: true },
 ];
 
 export const AppLayout: React.FC = () => {

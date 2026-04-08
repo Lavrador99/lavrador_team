@@ -12,7 +12,8 @@ export default defineConfig({
       includeAssets: ["icons/*.svg", "manifest.json"],
       manifest: false, // usamos o nosso manifest.json em /public
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        globPatterns: ["**/*.{css,html,svg,png,woff2}"],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: /^http:\/\/localhost:3333\/api\/.*/i,
@@ -25,7 +26,7 @@ export default defineConfig({
           },
         ],
       },
-      devOptions: { enabled: true },
+      devOptions: { enabled: false },
     }),
   ],
   resolve: {

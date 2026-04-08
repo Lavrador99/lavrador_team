@@ -21,6 +21,8 @@ import { MessagesPage } from './pages/messages/MessagesPage';
 import { InvoicesPage } from './pages/invoices/InvoicesPage';
 import { HabitsPage } from './pages/habits/HabitsPage';
 import { TemplatesPage } from './pages/templates/TemplatesPage';
+import { MyNutritionPage } from './pages/my-nutrition/MyNutritionPage';
+import { NutritionPage } from './pages/nutrition/NutritionPage';
 import { InstallPwaPrompt } from './components/InstallPwaPrompt';
 
 export const App: React.FC = () => {
@@ -45,6 +47,7 @@ export const App: React.FC = () => {
             <Route path="/my-plan/log/:workoutId" element={<WorkoutLoggerPage />} />
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/habits" element={<HabitsPage />} />
+            <Route path="/my-nutrition" element={<MyNutritionPage />} />
           </Route>
         </Route>
 
@@ -58,6 +61,7 @@ export const App: React.FC = () => {
             <Route path="/workouts" element={<WorkoutsListPage />} />
             <Route path="/invoices" element={<InvoicesPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
+            <Route path="/nutrition" element={<NutritionPage />} />
           </Route>
           {/* Editor fullscreen — sem sidebar */}
           <Route path="/workouts/editor" element={<WorkoutEditorPage />} />

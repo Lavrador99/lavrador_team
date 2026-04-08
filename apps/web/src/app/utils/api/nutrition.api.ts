@@ -77,4 +77,28 @@ export const nutritionApi = {
   deletePlan: async (id: string): Promise<void> => {
     await api.delete(`/nutrition/plans/${id}`);
   },
+
+  getPlan: async (id: string): Promise<MealPlanDto> => {
+    const { data } = await api.get(`/nutrition/plans/${id}`);
+    return data;
+  },
+
+  upsertDay: async (planId: string, dayOfWeek: number, label?: string): Promise<MealPlanDayDto> => {
+    const { data } = await api.post(`/nutrition/plans/${planId}/days/${dayOfWeek}`, { label });
+    return data;
+  },
+
+  addMeal: async (dayId: string, name: string, items: MealItem[]): Promise<MealDto> => {
+    const { data } = await api.post(`/nutrition/days/${dayId}/meals`, { name, items });
+    return data;
+  },
+
+  updateMeal: async (mealId: string, name: string, items: MealItem[]): Promise<MealDto> => {
+    const { data } = await api.put(`/nutrition/meals/${mealId}`, { name, items });
+    return data;
+  },
+
+  deleteMeal: async (mealId: string): Promise<void> => {
+    await api.delete(`/nutrition/meals/${mealId}`);
+  },
 };

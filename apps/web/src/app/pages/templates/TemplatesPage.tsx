@@ -41,6 +41,7 @@ export const TemplatesPage: React.FC = () => {
           <Title>Templates</Title>
           <Subtitle>// {templates.length} template{templates.length !== 1 ? 's' : ''}</Subtitle>
         </div>
+        <NewBtn onClick={() => navigate('/workouts/editor')}>+ Novo treino</NewBtn>
       </Header>
 
       <SearchRow>
@@ -258,6 +259,19 @@ const DeleteBtn = styled.button`
   &:hover { border-color: #ff3b3b; color: #ff3b3b; }
 `;
 
+const NewBtn = styled.button`
+  background: #c8f542;
+  color: #0a0a0f;
+  border: none;
+  border-radius: 7px;
+  padding: 10px 18px;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  &:hover { background: #d4ff55; }
+`;
 const Empty = styled.div`
   padding: 60px 24px;
   text-align: center;

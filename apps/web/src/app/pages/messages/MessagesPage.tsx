@@ -3,6 +3,8 @@ import { useSelector } from 'react-redux';
 import styled, { keyframes } from 'styled-components';
 import { RootState } from '../../store';
 import { messagesApi, MessageDto, ConversationPartner } from '../../utils/api/messages.api';
+import { clientsApi } from '../../utils/api/clients.api';
+import { UserDto } from '@libs/types';
 import { getSocket, disconnectSocket } from '../../utils/socket';
 
 const displayName = (p: ConversationPartner) => p.client?.name ?? p.email.split('@')[0];
@@ -17,24 +19,28 @@ export const MessagesPage: React.FC = () => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Ref para o selected — evita stale closure no socket handler
+  const selectedRef = useRef<ConversationPartner | null>(null);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
+
+  // Nova conversa — ADMIN
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [clientList, setClientList] = useState<UserDto[]>([]);
+
   // Connect socket
   useEffect(() => {
     if (!accessToken) return;
     const sock = getSocket(accessToken);
 
     sock.on('new_message', (msg: MessageDto) => {
-      setMessages((prev) => {
-        // Only add if belongs to current conversation
-        if (
-          selected &&
-          (msg.fromUserId === selected.id || msg.toUserId === selected.id)
-        ) {
+      const cur = selectedRef.current;
+      if (cur && (msg.fromUserId === cur.id || msg.toUserId === cur.id)) {
+        setMessages((prev) => {
           if (prev.find((m) => m.id === msg.id)) return prev;
           return [...prev, msg];
-        }
-        return prev;
-      });
-      // Refresh partner list on new message
+        });
+      }
+      // Refresh partner list on new message (unread counts, etc.)
       messagesApi.getPartners().then(setPartners).catch(() => {});
     });
 
@@ -84,11 +90,36 @@ export const MessagesPage: React.FC = () => {
     }
   };
 
+  const openNewChat = () => {
+    if (clientList.length === 0) {
+      clientsApi.getAll().then((users) => {
+        setClientList(users.filter((u) => u.role === 'CLIENT'));
+      }).catch(() => {});
+    }
+    setShowNewChat(true);
+  };
+
+  const startChatWith = (u: UserDto) => {
+    const partner: ConversationPartner = {
+      id: u.id,
+      email: u.email,
+      role: u.role,
+      client: u.client ?? null,
+    };
+    setSelected(partner);
+    // Add to partners list if not already there
+    setPartners((prev) => prev.find((p) => p.id === u.id) ? prev : [partner, ...prev]);
+    setShowNewChat(false);
+  };
+
   return (
     <Page>
       <Sidebar>
         <SidebarHeader>
           <SidebarTitle>Mensagens</SidebarTitle>
+          {user?.role === 'ADMIN' && (
+            <NewChatBtn onClick={openNewChat} title="Nova conversa">＋</NewChatBtn>
+          )}
         </SidebarHeader>
         {partners.length === 0 ? (
           <EmptyPartners>Sem conversas ainda.</EmptyPartners>
@@ -164,6 +195,30 @@ export const MessagesPage: React.FC = () => {
           </>
         )}
       </ChatArea>
+
+      {showNewChat && (
+        <ModalOverlay onClick={() => setShowNewChat(false)}>
+          <Modal onClick={(e) => e.stopPropagation()}>
+            <ModalTitle>Nova conversa</ModalTitle>
+            <ModalSub>Seleciona o cliente</ModalSub>
+            <ClientPickerList>
+              {clientList.length === 0 ? (
+                <PickerEmpty>A carregar clientes...</PickerEmpty>
+              ) : (
+                clientList.map((u) => (
+                  <ClientPickerRow key={u.id} onClick={() => startChatWith(u)}>
+                    <PickerAvatar>{(u.client?.name ?? u.email)[0].toUpperCase()}</PickerAvatar>
+                    <PickerInfo>
+                      <PickerName>{u.client?.name ?? u.email.split('@')[0]}</PickerName>
+                      <PickerEmail>{u.email}</PickerEmail>
+                    </PickerInfo>
+                  </ClientPickerRow>
+                ))
+              )}
+            </ClientPickerList>
+          </Modal>
+        </ModalOverlay>
+      )}
     </Page>
   );
 };
@@ -196,6 +251,25 @@ const Sidebar = styled.div`
 const SidebarHeader = styled.div`
   padding: 20px 16px 14px;
   border-bottom: 1px solid #1e1e28;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+const NewChatBtn = styled.button`
+  background: rgba(200,245,66,0.1);
+  border: 1px solid rgba(200,245,66,0.25);
+  color: #c8f542;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: all 0.15s;
+  &:hover { background: rgba(200,245,66,0.2); }
 `;
 
 const SidebarTitle = styled.div`
@@ -391,3 +465,16 @@ const SendBtn = styled.button`
   &:hover:not(:disabled) { background: #d4ff55; }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 `;
+
+// ─── Nova conversa modal ──────────────────────────────────────────────────────
+const ModalOverlay = styled.div`position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:9999;`;
+const Modal = styled.div`background:#111118;border:1px solid #2a2a35;border-radius:12px;width:360px;max-height:480px;display:flex;flex-direction:column;overflow:hidden;`;
+const ModalTitle = styled.div`font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#e8e8f0;padding:20px 20px 4px;`;
+const ModalSub = styled.div`font-family:'DM Mono',monospace;font-size:10px;color:#444455;padding:0 20px 14px;border-bottom:1px solid #1e1e28;`;
+const ClientPickerList = styled.div`overflow-y:auto;flex:1;padding:8px;`;
+const PickerEmpty = styled.div`font-family:'DM Mono',monospace;font-size:12px;color:#444455;padding:24px;text-align:center;`;
+const ClientPickerRow = styled.div`display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background .15s;&:hover{background:rgba(200,245,66,0.06);}`;
+const PickerAvatar = styled.div`width:34px;height:34px;border-radius:50%;background:#2a2a35;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#c8f542;flex-shrink:0;`;
+const PickerInfo = styled.div`flex:1;min-width:0;`;
+const PickerName = styled.div`font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:#e8e8f0;`;
+const PickerEmail = styled.div`font-family:'DM Mono',monospace;font-size:10px;color:#444455;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
