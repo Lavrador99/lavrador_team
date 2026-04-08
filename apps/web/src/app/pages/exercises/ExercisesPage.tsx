@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import styled from "styled-components";
-import { MuscleMap } from "../../components/MuscleMap";
+import { MuscleMap, MUSCLE_PT_NAME } from "../../components/MuscleMap";
 import { useExercises } from "../../hooks/useExercises";
 import { RootState } from "../../store";
 import { ExerciseFilters, exercisesApi } from "../../utils/api/exercises.api";
@@ -245,10 +245,10 @@ export const ExercisesPage: React.FC = () => {
                 </TagRow>
                 <TagRow>
                   {ex.primaryMuscles.map((m) => (
-                    <Tag key={m} $variant="muscle">{m.replace(/_/g, ' ')}</Tag>
+                    <Tag key={m} $variant="muscle">{MUSCLE_PT_NAME[m] ?? m.replace(/_/g, ' ')}</Tag>
                   ))}
                   {ex.secondaryMuscles.slice(0, 2).map((m) => (
-                    <Tag key={m}>{m.replace(/_/g, ' ')}</Tag>
+                    <Tag key={m}>{MUSCLE_PT_NAME[m] ?? m.replace(/_/g, ' ')}</Tag>
                   ))}
                 </TagRow>
                 <TagRow>
@@ -375,27 +375,14 @@ export const ExercisesPage: React.FC = () => {
             </MediaEditBox>
           )}
 
-          <MuscleMap
-            primaryMuscles={activeEx.primaryMuscles}
-            secondaryMuscles={activeEx.secondaryMuscles}
-          />
-
-          <MuscleGroups>
-            <MuscleGroupBlock>
-              <MuscleGroupLabel>Principal</MuscleGroupLabel>
-              {activeEx.primaryMuscles.map((m) => (
-                <MusclePill key={m} $primary>{m.replace(/_/g, ' ')}</MusclePill>
-              ))}
-            </MuscleGroupBlock>
-            {activeEx.secondaryMuscles.length > 0 && (
-              <MuscleGroupBlock>
-                <MuscleGroupLabel>Secundário</MuscleGroupLabel>
-                {activeEx.secondaryMuscles.map((m) => (
-                  <MusclePill key={m}>{m.replace(/_/g, ' ')}</MusclePill>
-                ))}
-              </MuscleGroupBlock>
-            )}
-          </MuscleGroups>
+          {/* ── Muscle map — full detail ── */}
+          <MuscleMapSection>
+            <MuscleMapSectionLabel>MÚSCULOS TRABALHADOS</MuscleMapSectionLabel>
+            <MuscleMap
+              primaryMuscles={activeEx.primaryMuscles}
+              secondaryMuscles={activeEx.secondaryMuscles}
+            />
+          </MuscleMapSection>
 
           {activeEx.equipment.length > 0 && (
             <EquipRow>
@@ -469,7 +456,7 @@ const DetailPanel = styled.div`
   position: fixed;
   top: 0;
   right: 0;
-  width: 340px;
+  width: 380px;
   height: 100vh;
   background: #0d0d13;
   border-left: 1px solid #1e1e28;
@@ -550,36 +537,17 @@ const NoGifText = styled.div`
   letter-spacing: 1px;
 `;
 
-const MuscleGroups = styled.div`
+const MuscleMapSection = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 `;
 
-const MuscleGroupBlock = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-`;
-
-const MuscleGroupLabel = styled.div`
+const MuscleMapSectionLabel = styled.div`
   font-family: 'DM Mono', monospace;
   font-size: 9px;
   color: #333342;
   letter-spacing: 2px;
-  text-transform: uppercase;
-  width: 100%;
-`;
-
-const MusclePill = styled.div<{ $primary?: boolean }>`
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  background: ${({ $primary }) => ($primary ? 'rgba(200,245,66,0.1)' : 'rgba(200,245,66,0.03)')};
-  border: 1px solid ${({ $primary }) => ($primary ? 'rgba(200,245,66,0.3)' : '#1e1e28')};
-  color: ${({ $primary }) => ($primary ? '#c8f542' : '#555566')};
 `;
 
 const EquipRow = styled.div`
