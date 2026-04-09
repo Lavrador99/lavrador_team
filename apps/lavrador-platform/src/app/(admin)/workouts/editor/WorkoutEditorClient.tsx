@@ -79,7 +79,7 @@ export function WorkoutEditorClient({ workoutId }: Props) {
     setError(null);
     try {
       let result;
-      const workout = useWorkoutEditorStore.getState().workout;
+      const { workout } = useWorkoutEditorStore.getState();
       if (workout?.id) {
         result = await workoutsApi.update(workout.id, { name, dayLabel: dayLabel || undefined, blocks });
       } else {

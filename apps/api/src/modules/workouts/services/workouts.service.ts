@@ -57,12 +57,18 @@ export class WorkoutsService {
     const workout = await this.repo.findById(id);
     if (!workout) throw new NotFoundException("Workout não encontrado");
 
-    // CLIENT só pode ver os seus
+    // CLIENT só pode ver os seus — resolve userId → clientId primeiro
     if (requestingRole === "CLIENT" && requestingUserId) {
-      if (workout.program?.clientId !== requestingUserId) {
-        if (workout.clientId !== requestingUserId) {
-          throw new ForbiddenException("Sem acesso");
-        }
+      const clientRecord = await this.prisma.client.findUnique({
+        where: { userId: requestingUserId },
+      });
+      const clientId = clientRecord?.id;
+      if (
+        !clientId ||
+        (workout.program?.clientId !== clientId &&
+          workout.clientId !== clientId)
+      ) {
+        throw new ForbiddenException("Sem acesso");
       }
     }
 

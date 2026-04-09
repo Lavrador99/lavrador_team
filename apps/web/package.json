@@ -1,8 +1,0 @@
-{
-  "name": "@lavrador-team/web",
-  "version": "0.0.1",
-  "dependencies": {
-    "@react-pdf/renderer": "^4.4.0",
-    "socket.io-client": "^4.8.3"
-  }
-}

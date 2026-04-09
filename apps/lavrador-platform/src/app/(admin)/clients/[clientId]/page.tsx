@@ -52,7 +52,7 @@ export default function ClientDetailPage() {
   const [newHabitName, setNewHabitName] = useState('');
   const [savingHabit, setSavingHabit] = useState(false);
 
-  const { data: client } = useSWR(clientId ? `client-${clientId}` : null, () => clientsApi.getById(clientId!));
+  const { data: client } = useSWR(clientId ? `client-${clientId}` : null, () => clientsApi.getDetail(clientId!));
   const { data: stats } = useSWR(clientId ? `stats-${clientId}` : null, () => statsApi.getClient(clientId!));
   const { data: programs = [], mutate: mutatePrograms } = useSWR(clientId ? `programs-${clientId}` : null, () => programsApi.getByClient(clientId!));
   const { data: sessions = [] } = useSWR(tab === 'sessions' && clientId ? `sessions-${clientId}` : null, () => sessionsApi.getAll({ clientId: clientId! }));
@@ -115,7 +115,7 @@ export default function ClientDetailPage() {
 
       <div className="flex items-start gap-5 mb-6">
         <div className="w-14 h-14 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center font-syne font-black text-accent text-2xl flex-shrink-0">
-          {name[0].toUpperCase()}
+          {name?.[0]?.toUpperCase() ?? '?'}
         </div>
         <div className="flex-1">
           <h1 className="font-syne font-black text-2xl text-white">{name}</h1>

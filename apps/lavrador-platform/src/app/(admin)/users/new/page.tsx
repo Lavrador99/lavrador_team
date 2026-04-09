@@ -1,7 +1,7 @@
 'use client';
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminApi } from '../../../lib/api/workouts.api';
+import { adminApi } from '../../../../lib/api/workouts.api';
 
 export default function NewUserPage() {
   const router = useRouter();

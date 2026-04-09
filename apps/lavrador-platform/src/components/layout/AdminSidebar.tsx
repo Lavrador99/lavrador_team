@@ -11,7 +11,6 @@ const ADMIN_NAV = [
   { path: '/schedule',     label: 'Agenda',       icon: '◫' },
   { path: '/prescription', label: 'Prescrição',   icon: '⚡' },
   { path: '/exercises',    label: 'Exercícios',   icon: '◈' },
-  { path: '/workouts',     label: 'Workouts',     icon: '▦' },
   { path: '/templates',    label: 'Templates',    icon: '◰' },
   { path: '/nutrition',    label: 'Nutrição',     icon: '◍' },
   { path: '/messages',     label: 'Mensagens',    icon: '◷' },

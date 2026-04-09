@@ -14,10 +14,6 @@ const SESSION_TYPE_LABEL: Record<string, string> = {
 const SESSION_STATUS_COLOR: Record<string, string> = {
   SCHEDULED: '#42a5f5', COMPLETED: '#c8f542', CANCELLED: '#ff3b3b', NO_SHOW: '#ff8c5a',
 };
-const LEVEL_LABEL: Record<string, string> = {
-  INICIANTE: 'Iniciante', INTERMEDIO: 'Intermédio', AVANCADO: 'Avançado',
-  iniciante: 'Iniciante', intermedio: 'Intermédio', avancado: 'Avançado',
-};
 
 export default function ClientDashboardPage() {
   const router = useRouter();
@@ -39,12 +35,6 @@ export default function ClientDashboardPage() {
       label: 'Streak actual',
       val: stats?.workoutStreak != null ? `${stats.workoutStreak} ${stats.workoutStreak === 1 ? 'dia' : 'dias'}` : '—',
       color: '#f5a442',
-    },
-    { label: 'Taxa comparência', val: stats ? `${stats.attendanceRate}%` : '—', color: '#42a5f5' },
-    {
-      label: 'Nível actual',
-      val: stats ? (LEVEL_LABEL[stats.currentLevel] ?? stats.currentLevel) : '—',
-      color: '#a855f7',
     },
   ];
 
@@ -146,33 +136,6 @@ export default function ClientDashboardPage() {
         </div>
       )}
 
-      {/* Assessment history */}
-      {stats?.assessmentHistory && stats.assessmentHistory.length > 0 && (
-        <>
-          <h2 className="font-syne font-bold text-sm text-white mb-3">Histórico de avaliações</h2>
-          <div className="flex flex-col gap-2">
-            {stats.assessmentHistory.map((a) => (
-              <div key={a.id} className="flex items-center gap-3 bg-panel border border-border rounded-lg px-3.5 py-2.5 flex-wrap">
-                <div className="font-syne font-bold text-xs text-purple-400 min-w-[90px]">
-                  {LEVEL_LABEL[a.level] ?? a.level}
-                </div>
-                <div className="font-mono text-[11px] text-muted flex-1">
-                  {new Date(a.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })}
-                </div>
-                {a.flags.length > 0 && (
-                  <div className="flex gap-1.5 flex-wrap">
-                    {a.flags.map((f) => (
-                      <span key={f} className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-orange-500/8 text-orange-400 border border-orange-500/20">
-                        {f}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 }

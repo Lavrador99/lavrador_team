@@ -3,11 +3,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const CLIENT_TABS = [
-  { path: '/client/dashboard', label: 'Início',  icon: '⬡' },
-  { path: '/client/my-plan',   label: 'Plano',   icon: '▦' },
-  { path: '/client/calendar',  label: 'Agenda',  icon: '◫' },
-  { path: '/client/messages',  label: 'Chat',    icon: '◷' },
-  { path: '/client/profile',   label: 'Perfil',  icon: '◎' },
+  { path: '/client/dashboard',  label: 'Início',     icon: '⬡' },
+  { path: '/client/my-plan',    label: 'Plano',      icon: '▦' },
+  { path: '/client/exercises',  label: 'Exercícios', icon: '◈' },
+  { path: '/client/stats',      label: 'Dados',      icon: '◉' },
+  { path: '/client/messages',   label: 'Chat',       icon: '◷' },
 ];
 
 export function ClientTabBar() {
@@ -22,12 +22,12 @@ export function ClientTabBar() {
             <Link
               key={tab.path}
               href={tab.path}
-              className={`flex flex-col items-center gap-1 px-4 py-1 rounded-lg transition-colors ${
+              className={`flex flex-col items-center gap-1 px-3 py-1 rounded-lg transition-colors ${
                 isActive ? 'text-accent' : 'text-muted'
               }`}
             >
               <span className="text-xl">{tab.icon}</span>
-              <span className={`font-mono text-[9px] tracking-widest uppercase ${isActive ? 'text-accent' : 'text-faint'}`}>
+              <span className={`font-mono text-[8px] tracking-widest uppercase ${isActive ? 'text-accent' : 'text-faint'}`}>
                 {tab.label}
               </span>
             </Link>
