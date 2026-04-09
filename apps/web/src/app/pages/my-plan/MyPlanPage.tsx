@@ -190,7 +190,15 @@ export const MyPlanPage: React.FC = () => {
                           {block.exercises.map((ex) => (
                             <ExerciseTr key={ex.id}>
                               <ExerciseTd>
-                                <ExerciseName>{ex.exerciseName}</ExerciseName>
+                                <ExerciseNameRow>
+                                  <ExerciseName>{ex.exerciseName}</ExerciseName>
+                                  <HistoryLink
+                                    onClick={() => navigate(`/exercise-history/${encodeURIComponent(ex.exerciseName)}`)}
+                                    title="Ver evolução"
+                                  >
+                                    📈
+                                  </HistoryLink>
+                                </ExerciseNameRow>
                                 {ex.notes && <ExerciseNote>{ex.notes}</ExerciseNote>}
                                 {ex.loadNote && <ExerciseNote>{ex.loadNote}</ExerciseNote>}
                               </ExerciseTd>
@@ -449,6 +457,24 @@ const ExerciseTd = styled.td<{ center?: boolean }>`
   font-size: 12px;
   color: #888899;
   vertical-align: top;
+`;
+
+const ExerciseNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const HistoryLink = styled.button`
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+  &:hover { opacity: 1; }
 `;
 
 const ExerciseName = styled.div`

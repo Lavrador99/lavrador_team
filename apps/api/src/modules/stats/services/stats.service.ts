@@ -154,7 +154,7 @@ export class StatsService {
         where: { clientId },
         select: { id: true, date: true, durationMin: true },
         orderBy: { date: "desc" },
-        take: 5,
+        take: 60, // enough to compute a 60-day streak
       }),
     ]);
 
@@ -193,7 +193,8 @@ export class StatsService {
       assessmentHistory,
       sessionHistory,
       totalWorkoutLogs: workoutLogs.length > 0 ? await this.prisma.workoutLog.count({ where: { clientId } }) : 0,
-      recentWorkoutLogs: workoutLogs.map((l) => ({
+      workoutStreak: calcStreak(workoutLogs.map((l) => l.date)),
+      recentWorkoutLogs: workoutLogs.slice(0, 5).map((l) => ({
         id: l.id,
         date: l.date.toISOString(),
         durationMin: l.durationMin,
@@ -288,6 +289,27 @@ export class StatsService {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function calcStreak(logDates: Date[]): number {
+  if (!logDates.length) return 0;
+  // Get unique date strings (YYYY-MM-DD)
+  const days = new Set(logDates.map((d) => d.toISOString().split('T')[0]));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let streak = 0;
+  const cur = new Date(today);
+  // Accept if today or yesterday has a log (don't break streak for same-day check)
+  while (true) {
+    const key = cur.toISOString().split('T')[0];
+    if (days.has(key)) {
+      streak++;
+      cur.setDate(cur.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
 
 function getStartOfWeek(date: Date): Date {
   const d = new Date(date);

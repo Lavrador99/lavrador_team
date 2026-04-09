@@ -121,7 +121,7 @@ export class WorkoutsService {
   async createLog(dto: CreateWorkoutLogDto, clientId: string) {
     await this.findById(dto.workoutId);
 
-    return this.repo.createLog({
+    const log = await this.repo.createLog({
       workoutId: dto.workoutId,
       clientId,
       date: dto.date ? new Date(dto.date) : new Date(),
@@ -130,6 +130,52 @@ export class WorkoutsService {
       durationMin: dto.durationMin,
       rpe: dto.rpe,
     });
+
+    // Auto-detect PRs (best 1RM per exercise in this log)
+    this.detectAndSavePersonalRecords(clientId, dto.entries).catch(() => {});
+
+    return log;
+  }
+
+  private async detectAndSavePersonalRecords(clientId: string, entries: any[]) {
+    for (const entry of entries) {
+      let best1RM = 0;
+      let bestLoad = 0;
+      let bestReps = 0;
+
+      for (const set of entry.sets ?? []) {
+        if (!set.completed) continue;
+        const load = Number(set.load ?? 0);
+        const reps = Number(set.reps ?? 0);
+        if (load > 0 && reps >= 1) {
+          const rm1 = load * (1 + reps / 30);
+          if (rm1 > best1RM) { best1RM = rm1; bestLoad = load; bestReps = reps; }
+        }
+      }
+
+      if (best1RM === 0) continue;
+      const roundedRM = Math.round(best1RM);
+
+      // Check if this beats the existing record
+      const existing = await this.prisma.personalRecord.findFirst({
+        where: { clientId, exerciseName: entry.exerciseName, type: 'WEIGHT_KG' },
+        orderBy: { value: 'desc' },
+      });
+
+      if (!existing || roundedRM > existing.value) {
+        await this.prisma.personalRecord.create({
+          data: {
+            clientId,
+            exerciseId: entry.exerciseId || undefined,
+            exerciseName: entry.exerciseName,
+            type: 'WEIGHT_KG',
+            value: roundedRM,
+            notes: `Auto-detectado: ${bestLoad}kg × ${bestReps} reps (Epley)`,
+            recordedAt: new Date(),
+          },
+        });
+      }
+    }
   }
 
   async getLogsByWorkout(workoutId: string) {
@@ -138,5 +184,17 @@ export class WorkoutsService {
 
   async getLogsByClient(clientId: string) {
     return this.repo.findLogsByClient(clientId);
+  }
+
+  async getExerciseHistory(clientId: string, exerciseId: string) {
+    return this.repo.findExerciseHistory(clientId, exerciseId);
+  }
+
+  async getCalendar(clientId: string) {
+    return this.repo.findCalendar(clientId);
+  }
+
+  async getMuscleVolume(clientId: string, weeks = 4) {
+    return this.repo.findMuscleVolume(clientId, weeks);
   }
 }

@@ -14,6 +14,12 @@ interface ActiveTimer {
   seconds: number;
 }
 
+// key: exerciseName → best set from last log
+type LastValues = Record<string, { load: number | null; reps: number }>;
+
+// exerciseId → new 1RM
+type NewPRs = Record<string, number>;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const buildKey = (blockId: string, exId: string) => `${blockId}_${exId}`;
@@ -24,6 +30,7 @@ const initSets = (ex: BlockExercise): SetState[] =>
     actualLoad: ex.load ? String(ex.load) : '',
     actualReps: '',
     rpe: null,
+    setType: 'NORMAL' as const,
   }));
 
 const BLOCK_TYPE_COLOR: Record<string, string> = {
@@ -71,17 +78,26 @@ export const WorkoutLoggerPage: React.FC = () => {
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // last values badge (from previous log)
+  const [lastValues, setLastValues] = useState<LastValues>({});
+
+  // PRs detected in this session
+  const [newPRs, setNewPRs] = useState<NewPRs>({});
+
   // summary modal
   const [done, setDone] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sessionRpe, setSessionRpe] = useState<number | null>(null);
   const [sessionNotes, setSessionNotes] = useState('');
 
-  // load workout
+  // load workout + last log for "last values" badges
   useEffect(() => {
     if (!workoutId) return;
-    workoutsApi.getById(workoutId)
-      .then((w) => {
+    Promise.all([
+      workoutsApi.getById(workoutId),
+      workoutsApi.getLogsByWorkout(workoutId),
+    ])
+      .then(([w, logs]) => {
         setWorkout(w);
         const map: ExSetsMap = {};
         w.blocks.forEach((b) => {
@@ -90,6 +106,21 @@ export const WorkoutLoggerPage: React.FC = () => {
           });
         });
         setSetsMap(map);
+
+        // Build last values from most recent log
+        if (logs.length > 0) {
+          const lastLog = logs[0]; // already ordered desc by date
+          const lv: LastValues = {};
+          for (const entry of lastLog.entries as any[]) {
+            const best = (entry.sets as any[])
+              .filter((s: any) => s.completed && s.reps > 0)
+              .sort((a: any, b: any) => (b.load ?? 0) - (a.load ?? 0))[0];
+            if (best) {
+              lv[entry.exerciseName] = { load: best.load ?? null, reps: best.reps };
+            }
+          }
+          setLastValues(lv);
+        }
       })
       .catch(() => navigate('/my-plan'))
       .finally(() => setLoading(false));
@@ -131,6 +162,7 @@ export const WorkoutLoggerPage: React.FC = () => {
             load: s.actualLoad ? Number(s.actualLoad) : undefined,
             rpe: s.rpe ?? undefined,
             completed: s.completed,
+            setType: s.setType,
           })),
         });
       });
@@ -139,9 +171,29 @@ export const WorkoutLoggerPage: React.FC = () => {
   };
 
   const handleFinish = () => {
-    setDone(true);
     if (elapsedRef.current) clearInterval(elapsedRef.current);
     setTimer(null);
+
+    // Detect new PRs (Epley 1RM)
+    const prs: NewPRs = {};
+    const entries = buildLogEntries();
+    for (const entry of entries) {
+      let best1RM = 0;
+      for (const s of entry.sets) {
+        if (!s.completed || !s.load || !s.reps) continue;
+        const rm = s.load * (1 + s.reps / 30);
+        if (rm > best1RM) best1RM = rm;
+      }
+      if (best1RM > 0) {
+        const prev = lastValues[entry.exerciseName];
+        const prevRM = prev?.load ? prev.load * (1 + prev.reps / 30) : 0;
+        if (best1RM > prevRM) {
+          prs[entry.exerciseName] = Math.round(best1RM);
+        }
+      }
+    }
+    setNewPRs(prs);
+    setDone(true);
   };
 
   const handleSave = async () => {
@@ -194,13 +246,12 @@ export const WorkoutLoggerPage: React.FC = () => {
       </ProgressBar>
       <ProgressLabel>{completedSets} / {totalSets} séries concluídas</ProgressLabel>
 
-      {/* ── Rest timer overlay ── */}
+      {/* ── Rest timer banner (non-blocking) ── */}
       {timer && (
-        <TimerOverlay>
-          <TimerCard>
-            <RestTimer seconds={timer.seconds} onDone={() => setTimer(null)} />
-          </TimerCard>
-        </TimerOverlay>
+        <TimerBanner>
+          <RestTimer seconds={timer.seconds} onDone={() => setTimer(null)} />
+          <TimerSkip onClick={() => setTimer(null)}>saltar</TimerSkip>
+        </TimerBanner>
       )}
 
       {/* ── Blocks ── */}
@@ -220,7 +271,17 @@ export const WorkoutLoggerPage: React.FC = () => {
               return (
                 <ExerciseSection key={ex.id}>
                   <ExerciseHeader>
-                    <ExerciseName>{ex.exerciseName}</ExerciseName>
+                    <ExerciseNameRow>
+                      <ExerciseName>{ex.exerciseName}</ExerciseName>
+                      {lastValues[ex.exerciseName] && (
+                        <LastBadge title="Último treino">
+                          prev {lastValues[ex.exerciseName].load != null
+                            ? `${lastValues[ex.exerciseName].load}kg × `
+                            : ''}
+                          {lastValues[ex.exerciseName].reps} reps
+                        </LastBadge>
+                      )}
+                    </ExerciseNameRow>
                     <ExerciseMeta>
                       {ex.sets}× · {ex.reps} reps
                       {ex.load && ` · ${ex.load} kg`}
@@ -277,6 +338,18 @@ export const WorkoutLoggerPage: React.FC = () => {
                 <StatLabel>séries</StatLabel>
               </StatItem>
             </ModalStats>
+
+            {Object.keys(newPRs).length > 0 && (
+              <PRSection>
+                <PRTitle>🏆 Novos Records Pessoais</PRTitle>
+                {Object.entries(newPRs).map(([name, rm]) => (
+                  <PRBadge key={name}>
+                    <PRExercise>{name}</PRExercise>
+                    <PRValue>~{rm} kg RM</PRValue>
+                  </PRBadge>
+                ))}
+              </PRSection>
+            )}
 
             <ModalLabel>RPE da sessão</ModalLabel>
             <RpeRow>
@@ -414,22 +487,30 @@ const ProgressLabel = styled.div`
   letter-spacing: 1px;
 `;
 
-const TimerOverlay = styled.div`
+const TimerBanner = styled.div`
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 50;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #111118;
+  border-top: 1px solid rgba(200, 245, 66, 0.3);
+  padding: 10px 20px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  z-index: 30;
 `;
 
-const TimerCard = styled.div`
-  background: #111118;
+const TimerSkip = styled.button`
+  background: none;
   border: 1px solid #2a2a35;
-  border-radius: 16px;
-  padding: 32px 40px;
-  min-width: 240px;
+  border-radius: 6px;
+  color: #444455;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  &:hover { border-color: #c8f542; color: #c8f542; }
 `;
 
 const Content = styled.div`
@@ -484,11 +565,28 @@ const ExerciseHeader = styled.div`
   margin-bottom: 12px;
 `;
 
+const ExerciseNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+`;
+
 const ExerciseName = styled.div`
   font-family: 'Syne', sans-serif;
   font-size: 15px;
   font-weight: 700;
   color: #e8e8f0;
+`;
+
+const LastBadge = styled.div`
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #888899;
+  background: #18181f;
+  border: 1px solid #2a2a35;
+  border-radius: 4px;
+  padding: 2px 7px;
 `;
 
 const ExerciseMeta = styled.div`
@@ -641,6 +739,44 @@ const NotesInput = styled.textarea`
   box-sizing: border-box;
   &:focus { border-color: #c8f542; }
   &::placeholder { color: #333342; }
+`;
+
+const PRSection = styled.div`
+  background: rgba(200, 245, 66, 0.05);
+  border: 1px solid rgba(200, 245, 66, 0.2);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+`;
+
+const PRTitle = styled.div`
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #c8f542;
+  margin-bottom: 10px;
+`;
+
+const PRBadge = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(200, 245, 66, 0.1);
+  &:last-child { border-bottom: none; }
+`;
+
+const PRExercise = styled.div`
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: #e8e8f0;
+`;
+
+const PRValue = styled.div`
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: #c8f542;
+  font-weight: 700;
 `;
 
 const ModalActions = styled.div`

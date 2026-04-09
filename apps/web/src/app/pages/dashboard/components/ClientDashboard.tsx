@@ -54,6 +54,13 @@ export const ClientDashboard: React.FC = () => {
       color: '#c8f542',
     },
     {
+      label: 'Streak atual',
+      val: stats?.workoutStreak != null
+        ? `${stats.workoutStreak} ${stats.workoutStreak === 1 ? 'dia' : 'dias'}`
+        : '—',
+      color: '#f5a442',
+    },
+    {
       label: 'Taxa de comparência',
       val: stats ? `${stats.attendanceRate}%` : '—',
       color: '#42a5f5',

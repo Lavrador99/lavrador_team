@@ -325,6 +325,7 @@ export interface ClientStats {
     cancelled: number;
   }[];
   totalWorkoutLogs?: number;
+  workoutStreak?: number; // consecutive days with a workout log ending today/yesterday
   recentWorkoutLogs?: { id: string; date: string; durationMin?: number | null }[];
 }
 
@@ -448,6 +449,8 @@ export interface UpdateWorkoutRequest {
 // WORKOUT LOGS (progresso do cliente)
 // ─────────────────────────────────────────────────────────────────────────────
 
+export type SetType = 'NORMAL' | 'WARMUP' | 'DROP' | 'FAILURE';
+
 export interface WorkoutLogEntry {
   blockId: string;
   exerciseId: string;
@@ -458,6 +461,7 @@ export interface WorkoutLogEntry {
     load?: number;
     rpe?: number;
     completed: boolean;
+    setType?: SetType;
     notes?: string;
   }[];
 }

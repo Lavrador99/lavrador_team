@@ -1,7 +1,23 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(wc -l /Users/alexandrelavrador/Documents/lavrador-team/apps/web/src/app/pages/**/*.tsx)",
+      "Bash(wc -l /Users/alexandrelavrador/Documents/lavrador-team/apps/web/src/app/utils/api/*.ts)",
+      "Bash(find /Users/alexandrelavrador/Documents/lavrador-team/apps/web/src/app/utils/api -name \"*.ts\" ! -name \"axios.ts\" -exec grep -l \"export const\\\\|export const.*Api\\\\|export const.*api\" {} \\\\;)",
+      "Bash(ls /Users/alexandrelavrador/Documents/lavrador-team/apps/lavrador-platform/tsconfig*.json)",
+      "Bash(ls /Users/alexandrelavrador/Documents/lavrador-team/tsconfig*.json)",
+      "Bash(node -e \"const p = require\\('./node_modules/next/package.json'\\); console.log\\('next:', p.version\\)\")",
+      "Bash(node -e \"const p = require\\('./node_modules/react/package.json'\\); console.log\\('react:', p.version\\)\")",
+      "Bash(grep -v \"^\\\\s*$\")",
+      "Bash(npx next:*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('targets',{}\\).get\\('build',{}\\), indent=2\\)\\)\")",
+      "Bash(npx tsc:*)"
+    ],
+    "additionalDirectories": [
+      "/Users/alexandrelavrador/Documents/lavrador-team/apps/lavrador-platform/src/app/(client)/client/my-plan/log",
+      "/Users/alexandrelavrador/Documents/lavrador-team/apps/lavrador-platform/src/app/(admin)/workouts/editor",
+      "/Users/alexandrelavrador/Documents/lavrador-team/apps/lavrador-platform/src/app/(admin)/workouts/editor/[id]"
     ]
   }
 }

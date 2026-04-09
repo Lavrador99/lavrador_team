@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 
@@ -108,5 +109,59 @@ export class WorkoutsController {
   @Get("logs/my")
   getMyLogs(@CurrentUser("sub") userId: string) {
     return this.workoutsService.getLogsByClient(userId);
+  }
+
+  // ─── Exercise history ─────────────────────────────────────────────────
+
+  @Get("history/client/:clientId/exercise/:exerciseId")
+  @UseGuards(RolesGuard)
+  @Roles("ADMIN")
+  getExerciseHistory(
+    @Param("clientId") clientId: string,
+    @Param("exerciseId") exerciseId: string,
+  ) {
+    return this.workoutsService.getExerciseHistory(clientId, exerciseId);
+  }
+
+  @Get("history/my/exercise/:exerciseId")
+  getMyExerciseHistory(
+    @Param("exerciseId") exerciseId: string,
+    @CurrentUser("sub") userId: string,
+  ) {
+    return this.workoutsService.getExerciseHistory(userId, exerciseId);
+  }
+
+  // ─── Calendar ─────────────────────────────────────────────────────────
+
+  @Get("calendar/client/:clientId")
+  @UseGuards(RolesGuard)
+  @Roles("ADMIN")
+  getCalendar(@Param("clientId") clientId: string) {
+    return this.workoutsService.getCalendar(clientId);
+  }
+
+  @Get("calendar/my")
+  getMyCalendar(@CurrentUser("sub") userId: string) {
+    return this.workoutsService.getCalendar(userId);
+  }
+
+  // ─── Muscle volume ────────────────────────────────────────────────────
+
+  @Get("muscle-volume/client/:clientId")
+  @UseGuards(RolesGuard)
+  @Roles("ADMIN")
+  getMuscleVolume(
+    @Param("clientId") clientId: string,
+    @Query("weeks") weeks?: string,
+  ) {
+    return this.workoutsService.getMuscleVolume(clientId, weeks ? Number(weeks) : 4);
+  }
+
+  @Get("muscle-volume/my")
+  getMyMuscleVolume(
+    @CurrentUser("sub") userId: string,
+    @Query("weeks") weeks?: string,
+  ) {
+    return this.workoutsService.getMuscleVolume(userId, weeks ? Number(weeks) : 4);
   }
 }
