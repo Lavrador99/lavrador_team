@@ -78,6 +78,20 @@ export class NutritionController {
     return this.nutrition.deleteMeal(mealId);
   }
 
+  // ── Snapshots ──────────────────────────────────────────────────────────────
+
+  @Roles('ADMIN')
+  @Get('plans/:id/snapshots')
+  getSnapshots(@Param('id') id: string) {
+    return this.nutrition.getSnapshots(id);
+  }
+
+  @Roles('ADMIN')
+  @Get('snapshots/:snapshotId')
+  getSnapshot(@Param('snapshotId') snapshotId: string) {
+    return this.nutrition.getSnapshot(snapshotId);
+  }
+
   // ── Client's own plan ──────────────────────────────────────────────────────
 
   @Get('my-plan')

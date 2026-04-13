@@ -65,15 +65,38 @@ export class SuggestionRepository {
     });
   }
 
-  // Registo de substituições (X → Y)
+  // Registo de substituições (X → Y) + sinal global para toExId nos outros objectivos
   async recordSubstitution(data: {
     fromExId: string;
     toExId: string;
     level: TrainingLevel;
+    pattern: MovementPattern;
+    objective: string;
     reason?: string;
   }) {
-    // Penaliza o exercício substituído, recompensa o escolhido
-    await Promise.all([this.prisma.exerciseSubstitution.create({ data })]);
+    const ALL_OBJECTIVES = ['FORCA', 'HIPERTROFIA', 'RESISTENCIA', 'POTENCIA', 'SAUDE_GERAL'];
+    const otherObjectives = ALL_OBJECTIVES.filter((o) => o !== data.objective);
+
+    await Promise.all([
+      this.prisma.exerciseSubstitution.create({
+        data: {
+          fromExId: data.fromExId,
+          toExId: data.toExId,
+          level: data.level,
+          reason: data.reason,
+        },
+      }),
+      // Sinal global parcial: +0.5 para toExId nos outros objectivos do mesmo level/pattern
+      ...otherObjectives.map((obj) =>
+        this.upsertScore({
+          exerciseId: data.toExId,
+          level: data.level,
+          pattern: data.pattern,
+          objective: obj,
+          delta: +0.5,
+        }),
+      ),
+    ]);
   }
 
   // ─── Stats para o threshold ───────────────────────────────────────────

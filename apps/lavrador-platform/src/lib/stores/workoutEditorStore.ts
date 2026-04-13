@@ -45,6 +45,10 @@ interface EditorState {
   durationPreview: { totalMin: number; warning?: string } | null;
   error: string | null;
 
+  // ── Bulk selection ──────────────────────────────────────────────────────
+  bulkSelectionActive: boolean;
+  selectedExerciseIds: Set<string>;
+
   initNew: (opts: { programId: string; clientId: string }) => void;
   loadWorkout: (w: WorkoutDto) => void;
   setName: (n: string) => void;
@@ -61,12 +65,20 @@ interface EditorState {
   setError: (e: string | null) => void;
   setWorkout: (w: WorkoutDto) => void;
   markClean: () => void;
+
+  // ── Bulk actions ────────────────────────────────────────────────────────
+  toggleBulkSelection: () => void;
+  toggleExerciseSelection: (exId: string) => void;
+  setAllSelected: (exIds: string[]) => void;
+  clearSelection: () => void;
+  bulkUpdateExercises: (ids: Set<string>, changes: Partial<BlockExercise>) => void;
 }
 
 export const useWorkoutEditorStore = create<EditorState>((set, get) => ({
   workout: null, blocks: [], name: 'Novo Treino', dayLabel: '',
   programId: '', clientId: '', isDirty: false, saving: false,
   durationPreview: null, error: null,
+  bulkSelectionActive: false, selectedExerciseIds: new Set(),
 
   initNew: ({ programId, clientId }) =>
     set({ workout: null, blocks: [], name: 'Novo Treino', dayLabel: '', programId, clientId, isDirty: false, error: null }),
@@ -129,4 +141,27 @@ export const useWorkoutEditorStore = create<EditorState>((set, get) => ({
   setError: (e) => set({ error: e }),
   setWorkout: (w) => set({ workout: w }),
   markClean: () => set({ isDirty: false }),
+
+  toggleBulkSelection: () =>
+    set((s) => ({ bulkSelectionActive: !s.bulkSelectionActive, selectedExerciseIds: new Set() })),
+
+  toggleExerciseSelection: (exId) =>
+    set((s) => {
+      const next = new Set(s.selectedExerciseIds);
+      if (next.has(exId)) next.delete(exId); else next.add(exId);
+      return { selectedExerciseIds: next };
+    }),
+
+  setAllSelected: (exIds) => set({ selectedExerciseIds: new Set(exIds) }),
+
+  clearSelection: () => set({ selectedExerciseIds: new Set() }),
+
+  bulkUpdateExercises: (ids, changes) =>
+    set((s) => ({
+      blocks: s.blocks.map((b) => ({
+        ...b,
+        exercises: b.exercises.map((e) => ids.has(e.id) ? { ...e, ...changes } : e),
+      })),
+      isDirty: true,
+    })),
 }));

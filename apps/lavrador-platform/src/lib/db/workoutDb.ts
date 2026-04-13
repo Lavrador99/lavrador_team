@@ -49,6 +49,11 @@ export async function queuePendingLog(log: CreateWorkoutLogRequest, localId: str
   await db.pendingLogs.add({ ...log, localId, createdAt: Date.now() });
 }
 
+export async function getPendingCount(): Promise<number> {
+  const db = getDb();
+  return db.pendingLogs.count();
+}
+
 export async function flushPendingLogs(submitFn: (log: CreateWorkoutLogRequest) => Promise<void>) {
   const db = getDb();
   const pending = await db.pendingLogs.orderBy('createdAt').toArray();

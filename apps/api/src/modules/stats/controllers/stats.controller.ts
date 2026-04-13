@@ -33,4 +33,9 @@ export class StatsController {
   getActivity() {
     return this.statsService.getClientsActivity();
   }
+
+  @Get("churn-risk")
+  getChurnRisk() {
+    return this.statsService.getChurnRiskClients();
+  }
 }

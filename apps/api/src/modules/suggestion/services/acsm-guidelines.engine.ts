@@ -33,6 +33,8 @@ export interface AcsmPrescription {
   // Velocidade de execução
   tempo: string;   // concêntrico:pausa:excêntrico:pausa
   notes: string;
+  // Overrides clínicos (optional)
+  rpeMaxCap?: number;   // ex: 7 para hipertensão
 }
 
 /**
@@ -141,9 +143,14 @@ export const CLINICAL_FLAGS_RULES: Record<string, {
     note: 'Evitar press acima da cabeça. Reforçar rotadores externos e romboides.',
   },
   hipertensao: {
-    avoid: [],
+    avoid: ['EMPURRAR_VERTICAL'],
     prioritize: ['LOCOMOCAO'],
-    note: 'Evitar Valsalva. Não iniciar se PAS >200 ou PAD >110 mmHg.',
+    note: 'Evitar Valsalva (press acima da cabeça). Não iniciar se PAS >200 ou PAD >110 mmHg. Cap RPE ≤7.',
+  },
+  joelho: {
+    avoid: ['DOMINANTE_JOELHO'],
+    prioritize: ['DOMINANTE_ANCA'],
+    note: 'Substituir dominantes de joelho por dominantes de anca. Evitar flexão profunda e stress patelofemoral.',
   },
   sedentario: {
     avoid: [],
@@ -151,6 +158,95 @@ export const CLINICAL_FLAGS_RULES: Record<string, {
     note: 'Início gradual. Priorizar mobilidade e activação antes de carga.',
   },
 };
+
+/**
+ * Aplica overrides clínicos à prescrição base com base nos flags do cliente.
+ * Actualmente: impõe rpeMaxCap: 7 para hipertensão e perfis contraindicados.
+ */
+export function applyClinicalOverrides(
+  prescription: AcsmPrescription,
+  flags: string[],
+): AcsmPrescription {
+  const sensitiveFlags = ['hipertensao', 'HIPERTENSAO', 'contraindicado', 'CONTRAINDICADO'];
+  const hasSensitive = flags.some((f) => sensitiveFlags.includes(f));
+  if (!hasSensitive) return prescription;
+  return { ...prescription, rpeMaxCap: 7 };
+}
+
+// ─── Tipos auxiliares para phase-based defaults ──────────────────────────────
+
+interface PhaseForça {
+  series?: string;    // ex: "3-4" ou "3×8-12"
+  intervalo?: string; // ex: "60-90s" ou "2-3min"
+  [key: string]: unknown;
+}
+
+interface ProgramPhaseMin {
+  weeks: number;
+  forca?: PhaseForça;
+}
+
+export interface PhaseDefaults {
+  sets?: { min: number; max: number };
+  reps?: { min: number; max: number };
+  restBetweenSetsSeconds?: { min: number; max: number };
+}
+
+/**
+ * Dado o array de fases de um programa e a semana actual do treino,
+ * devolve os defaults de sets/reps/repouso para essa fase.
+ */
+export function extractPhaseDefaults(
+  phases: ProgramPhaseMin[],
+  currentWeek: number,
+): PhaseDefaults {
+  let accWeeks = 0;
+  for (const phase of phases) {
+    accWeeks += phase.weeks;
+    if (currentWeek <= accWeeks) {
+      return parsePhaseToDefaults(phase);
+    }
+  }
+  // Última fase como fallback
+  if (phases.length > 0) return parsePhaseToDefaults(phases[phases.length - 1]);
+  return {};
+}
+
+function parseSeriesString(s: string): { min: number; max: number } | undefined {
+  // "3-4" | "3×8-12" → captura primeiros dois números separados por - ou ×
+  const m = s.match(/(\d+)[-–×x](\d+)/);
+  if (m) return { min: parseInt(m[1]), max: parseInt(m[2]) };
+  const single = s.match(/(\d+)/);
+  if (single) { const n = parseInt(single[1]); return { min: n, max: n }; }
+  return undefined;
+}
+
+function parseIntervalString(s: string): { min: number; max: number } | undefined {
+  const secRange = s.match(/(\d+)[-–](\d+)\s*s/i);
+  if (secRange) return { min: parseInt(secRange[1]), max: parseInt(secRange[2]) };
+  const minRange = s.match(/(\d+)[-–](\d+)\s*min/i);
+  if (minRange) return { min: parseInt(minRange[1]) * 60, max: parseInt(minRange[2]) * 60 };
+  const singleSec = s.match(/(\d+)\s*s/i);
+  if (singleSec) { const n = parseInt(singleSec[1]); return { min: n, max: n }; }
+  const singleMin = s.match(/(\d+)\s*min/i);
+  if (singleMin) { const n = parseInt(singleMin[1]) * 60; return { min: n, max: n }; }
+  return undefined;
+}
+
+function parsePhaseToDefaults(phase: ProgramPhaseMin): PhaseDefaults {
+  const result: PhaseDefaults = {};
+  const f = phase.forca;
+  if (!f) return result;
+  if (f.series) {
+    const parsed = parseSeriesString(f.series);
+    if (parsed) result.sets = parsed;
+  }
+  if (f.intervalo) {
+    const parsed = parseIntervalString(f.intervalo);
+    if (parsed) result.restBetweenSetsSeconds = parsed;
+  }
+  return result;
+}
 
 /**
  * Dado o objectivo do cliente em texto livre (da avaliação),

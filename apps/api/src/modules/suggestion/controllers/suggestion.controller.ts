@@ -14,20 +14,22 @@ export class SuggestionController {
   @Post()
   @HttpCode(HttpStatus.OK)
   suggest(@Body() body: {
-    clientId:  string;
-    level:     string;
-    objective: string;
-    flags:     string[];
-    equipment: string[];
-    pattern?:  string;
+    clientId:     string;
+    assessmentId?: string;
+    level:        string;
+    objective:    string;
+    flags:        string[];
+    equipment:    string[];
+    pattern?:     string;
   }) {
     return this.suggestionService.suggest({
-      clientId:  body.clientId,
-      level:     body.level   as any,
-      objective: body.objective,
-      flags:     body.flags ?? [],
-      equipment: body.equipment ?? [],
-      pattern:   body.pattern  as any,
+      clientId:     body.clientId,
+      assessmentId: body.assessmentId,
+      level:        body.level   as any,
+      objective:    body.objective,
+      flags:        body.flags ?? [],
+      equipment:    body.equipment ?? [],
+      pattern:      body.pattern  as any,
     });
   }
 

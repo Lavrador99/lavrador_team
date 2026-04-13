@@ -520,10 +520,22 @@ model MealPlan {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  client Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  days   MealPlanDay[]
+  client    Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  days      MealPlanDay[]
+  snapshots MealPlanSnapshot[]
 
   @@map("meal_plans")
+}
+
+model MealPlanSnapshot {
+  id        String   @id @default(cuid())
+  planId    String
+  snapshot  Json
+  createdAt DateTime @default(now())
+
+  plan MealPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@map("meal_plan_snapshots")
 }
 
 model MealPlanDay {

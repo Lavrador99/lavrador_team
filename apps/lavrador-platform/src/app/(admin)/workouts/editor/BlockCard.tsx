@@ -34,7 +34,10 @@ interface Props {
 }
 
 export function BlockCard({ block, index, isDragging, onDragStart, onDragOver, onDrop }: Props) {
-  const { updateBlock, removeBlock, addExercise, removeExercise, updateExercise } = useWorkoutEditorStore();
+  const {
+    updateBlock, removeBlock, addExercise, removeExercise, updateExercise,
+    bulkSelectionActive, selectedExerciseIds, toggleExerciseSelection,
+  } = useWorkoutEditorStore();
   const [collapsed, setCollapsed] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -191,8 +194,24 @@ export function BlockCard({ block, index, isDragging, onDragStart, onDragOver, o
             <>
               <div className="flex flex-col gap-2 mb-3">
                 {block.exercises.map((ex) => (
-                  <div key={ex.id} className="bg-[#18181f] border border-[#2a2a35] rounded-lg p-3 flex gap-2 items-start">
-                    <span className="text-[#2a2a35] cursor-grab text-sm pt-1 select-none">⠿</span>
+                  <div key={ex.id}
+                    className={`bg-[#18181f] border rounded-lg p-3 flex gap-2 items-start transition-colors ${
+                      bulkSelectionActive && selectedExerciseIds.has(ex.id)
+                        ? 'border-accent/50 bg-accent/5'
+                        : 'border-[#2a2a35]'
+                    }`}>
+                    {bulkSelectionActive ? (
+                      <button
+                        onClick={() => toggleExerciseSelection(ex.id)}
+                        className={`w-5 h-5 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center text-xs transition-colors ${
+                          selectedExerciseIds.has(ex.id)
+                            ? 'bg-accent border-accent text-dark font-black'
+                            : 'border-[#444] text-transparent'
+                        }`}
+                      >✓</button>
+                    ) : (
+                      <span className="text-[#2a2a35] cursor-grab text-sm pt-1 select-none">⠿</span>
+                    )}
                     <div className="flex-1">
                       <input
                         value={ex.exerciseName}

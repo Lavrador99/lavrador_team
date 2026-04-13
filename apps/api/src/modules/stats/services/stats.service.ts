@@ -1,13 +1,21 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import { Cache } from "cache-manager";
 import { PrismaService } from "../../prisma/prisma.service";
 
 @Injectable()
 export class StatsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
+  ) {}
 
   // ─── Dashboard global (PT) ──────────────────────────────────────────────
 
   async getDashboardStats() {
+    const cached = await this.cache.get('stats:dashboard');
+    if (cached) return cached;
+
     const now = new Date();
     const startOfWeek = getStartOfWeek(now);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -103,7 +111,7 @@ export class StatsService {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 8);
 
-    return {
+    const result = {
       totalClients,
       activePrograms,
       sessionsThisWeek,
@@ -114,6 +122,8 @@ export class StatsService {
       sessionsByType,
       recentActivity,
     };
+    await this.cache.set('stats:dashboard', result, 3600);
+    return result;
   }
 
   // ─── Stats do próprio cliente (resolve userId → clientId) ──────────────
@@ -200,6 +210,58 @@ export class StatsService {
         durationMin: l.durationMin,
       })),
     };
+  }
+
+  // ─── Risco de desistência (quebra de aderência >30% nas últimas semanas) ─
+
+  async getChurnRiskClients() {
+    const now = new Date();
+    const weeksAgo = (n: number) => new Date(now.getTime() - n * 7 * 24 * 60 * 60 * 1000);
+
+    const recentFrom   = weeksAgo(3);   // semanas -3 a -1
+    const previousFrom = weeksAgo(6);   // semanas -6 a -4
+
+    const clients = await this.prisma.client.findMany({
+      select: { id: true, name: true },
+    });
+
+    const result = [];
+
+    for (const client of clients) {
+      const [recentSessions, previousSessions] = await Promise.all([
+        this.prisma.session.findMany({
+          where: { clientId: client.id, scheduledAt: { gte: recentFrom, lt: weeksAgo(0) } },
+          select: { status: true },
+        }),
+        this.prisma.session.findMany({
+          where: { clientId: client.id, scheduledAt: { gte: previousFrom, lt: recentFrom } },
+          select: { status: true },
+        }),
+      ]);
+
+      if (previousSessions.length === 0) continue;
+
+      const rate = (sessions: { status: string }[]) => {
+        const completed = sessions.filter((s) => s.status === 'COMPLETED').length;
+        return sessions.length > 0 ? (completed / sessions.length) * 100 : 0;
+      };
+
+      const recentPct   = rate(recentSessions);
+      const previousPct = rate(previousSessions);
+      const dropPct = previousPct > 0 ? ((previousPct - recentPct) / previousPct) * 100 : 0;
+
+      if (dropPct > 30) {
+        result.push({
+          clientId:              client.id,
+          clientName:            client.name,
+          recentAdherencePct:    Math.round(recentPct),
+          previousAdherencePct:  Math.round(previousPct),
+          dropPct:               Math.round(dropPct),
+        });
+      }
+    }
+
+    return result.sort((a, b) => b.dropPct - a.dropPct);
   }
 
   // ─── Distribuição global de sessões ─────────────────────────────────────

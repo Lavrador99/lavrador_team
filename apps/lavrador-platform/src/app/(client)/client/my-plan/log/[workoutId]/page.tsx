@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { WorkoutDto, WorkoutBlock, WorkoutLogEntry, SetType } from '@libs/types';
 import { workoutsApi } from '../../../../../../lib/api/workouts.api';
-import { cacheWorkout, getCachedWorkout, queuePendingLog, flushPendingLogs } from '../../../../../../lib/db/workoutDb';
+import { cacheWorkout, getCachedWorkout, queuePendingLog, flushPendingLogs, getPendingCount } from '../../../../../../lib/db/workoutDb';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -50,8 +50,12 @@ export default function WorkoutLoggerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [newPRs, setNewPRs] = useState<Record<string, number>>({});
+  const [pendingCount, setPendingCount] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const restRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wakeLockRef = useRef<any>(null);
+  const restTimerRef = useRef<number | null>(null);
 
   // ── Load workout (online → cache, offline → cached) ───────────────────────
   useEffect(() => {
@@ -65,6 +69,7 @@ export default function WorkoutLoggerPage() {
         if (cached) { setWorkout(cached); setOffline(true); }
       } finally {
         setLoading(false);
+        getPendingCount().then(setPendingCount).catch(() => {});
       }
     }
     load();
@@ -74,7 +79,9 @@ export default function WorkoutLoggerPage() {
   useEffect(() => {
     function onOnline() {
       setOffline(false);
-      flushPendingLogs(async (log) => { await workoutsApi.createLog(log); }).catch(() => {});
+      flushPendingLogs(async (log) => { await workoutsApi.createLog(log); })
+        .then(() => getPendingCount().then(setPendingCount))
+        .catch(() => {});
     }
     function onOffline() { setOffline(true); }
     window.addEventListener('online', onOnline);
@@ -89,6 +96,26 @@ export default function WorkoutLoggerPage() {
   useEffect(() => {
     timerRef.current = setInterval(() => setTimer((t) => t + 1), 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
+  // ── Keep restTimerRef in sync (used by visibilitychange without closure stale) ──
+  useEffect(() => { restTimerRef.current = restTimer; }, [restTimer]);
+
+  // ── Re-acquire Wake Lock when tab becomes visible again ───────────────────
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible' && restTimerRef.current !== null && !wakeLockRef.current) {
+        if ('wakeLock' in navigator) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (navigator as any).wakeLock.request('screen')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .then((lock: any) => { wakeLockRef.current = lock; })
+            .catch(() => {});
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   // ── Init sets state from workout ──────────────────────────────────────────
@@ -117,14 +144,31 @@ export default function WorkoutLoggerPage() {
     return `${m}:${String(sec).padStart(2, '0')}`;
   }
 
+  function releaseWakeLock() {
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().catch(() => {});
+      wakeLockRef.current = null;
+    }
+  }
+
   function startRestTimer(seconds: number) {
     if (restRef.current) clearInterval(restRef.current);
     setRestTimer(seconds);
     if (typeof navigator.vibrate === 'function') navigator.vibrate(50);
+    // Mantém o ecrã ligado durante o período de descanso
+    if ('wakeLock' in navigator) {
+      releaseWakeLock();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (navigator as any).wakeLock.request('screen')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .then((lock: any) => { wakeLockRef.current = lock; })
+        .catch(() => {});
+    }
     restRef.current = setInterval(() => {
       setRestTimer((t) => {
         if (t === null || t <= 1) {
           clearInterval(restRef.current!);
+          releaseWakeLock();
           if (typeof navigator.vibrate === 'function') navigator.vibrate([100, 50, 100]);
           return null;
         }
@@ -211,16 +255,19 @@ export default function WorkoutLoggerPage() {
       date: new Date().toISOString(),
     };
 
+    releaseWakeLock();
     setSubmitting(true);
     try {
       if (offline) {
         await queuePendingLog(log, `${workout.id}_${Date.now()}`);
+        setPendingCount(await getPendingCount());
       } else {
         await workoutsApi.createLog(log);
       }
       setDone(true);
     } catch {
       await queuePendingLog(log, `${workout.id}_${Date.now()}`);
+      setPendingCount(await getPendingCount());
       setDone(true);
     } finally {
       setSubmitting(false);
@@ -277,7 +324,9 @@ export default function WorkoutLoggerPage() {
         </div>
         <div className="flex items-center gap-2">
           {offline && (
-            <span className="font-mono text-[10px] text-orange-400 border border-orange-400/30 bg-orange-400/5 px-2 py-0.5 rounded">offline</span>
+            <span className="font-mono text-[10px] text-orange-400 border border-orange-400/30 bg-orange-400/5 px-2 py-0.5 rounded">
+              {pendingCount > 0 ? `offline · ${pendingCount} pendente${pendingCount !== 1 ? 's' : ''}` : 'offline'}
+            </span>
           )}
           <button
             onClick={handleFinish}
@@ -295,7 +344,7 @@ export default function WorkoutLoggerPage() {
           <div className="bg-panel border border-border rounded-2xl px-6 py-3 flex items-center gap-4 pointer-events-auto shadow-xl">
             <span className="font-mono text-sm text-accent font-bold">Descanso {restTimer}s</span>
             <button
-              onClick={() => { setRestTimer(null); if (restRef.current) clearInterval(restRef.current); }}
+              onClick={() => { setRestTimer(null); if (restRef.current) clearInterval(restRef.current); releaseWakeLock(); }}
               className="font-mono text-[10px] text-muted hover:text-white transition-colors"
             >
               pular

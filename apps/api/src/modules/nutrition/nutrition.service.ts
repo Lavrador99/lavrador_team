@@ -83,12 +83,43 @@ export class NutritionService {
   }
 
   async updateMeal(mealId: string, name: string, items: MealItem[]) {
+    // Snapshot do plano antes de modificar
+    const meal = await this.prisma.mealPlanMeal.findUnique({
+      where: { id: mealId },
+      select: { day: { select: { planId: true } } },
+    });
+    if (meal?.day?.planId) {
+      await this.createSnapshot(meal.day.planId);
+    }
     const kcal = items.reduce((s, i) => s + i.kcal, 0);
     return this.prisma.mealPlanMeal.update({ where: { id: mealId }, data: { name, items: items as any, kcal } });
   }
 
   deleteMeal(mealId: string) {
     return this.prisma.mealPlanMeal.delete({ where: { id: mealId } });
+  }
+
+  async createSnapshot(planId: string) {
+    const plan = await this.prisma.mealPlan.findUnique({
+      where: { id: planId },
+      include: { days: { include: { meals: true }, orderBy: { dayOfWeek: 'asc' } } },
+    });
+    if (!plan) return;
+    await this.prisma.mealPlanSnapshot.create({
+      data: { planId, snapshot: plan as any },
+    });
+  }
+
+  getSnapshots(planId: string) {
+    return this.prisma.mealPlanSnapshot.findMany({
+      where: { planId },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, createdAt: true },
+    });
+  }
+
+  getSnapshot(snapshotId: string) {
+    return this.prisma.mealPlanSnapshot.findUnique({ where: { id: snapshotId } });
   }
 
   // ─── Client's active plan ──────────────────────────────────────────────────

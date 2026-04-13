@@ -7,6 +7,8 @@ import { workoutsApi } from '../../../../lib/api/workouts.api';
 import { workoutTemplatesApi } from '../../../../lib/api/workout-templates.api';
 import { BlockCard } from './BlockCard';
 
+const smInp = 'bg-[#111118] border border-[#2a2a35] rounded px-2 py-1 text-xs text-white outline-none focus:border-accent w-16 placeholder-faint';
+
 const BLOCK_TYPES: { type: BlockType; emoji: string; label: string; desc: string }[] = [
   { type: 'WARMUP',      emoji: '🔥', label: 'Aquecimento',   desc: '5–10 min dinâmico' },
   { type: 'SEQUENTIAL',  emoji: '📋', label: 'Sequencial',    desc: 'Séries normais A, B, C...' },
@@ -28,12 +30,18 @@ export function WorkoutEditorClient({ workoutId }: Props) {
     blocks, name, dayLabel, programId, clientId, isDirty, saving, durationPreview, error,
     initNew, loadWorkout, setName, setDayLabel, addBlock, reorderBlocks,
     setDurationPreview, setSaving, setError, setWorkout, markClean,
+    bulkSelectionActive, selectedExerciseIds, toggleBulkSelection, setAllSelected, clearSelection, bulkUpdateExercises,
   } = useWorkoutEditorStore();
 
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const [showBlockPicker, setShowBlockPicker] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [bulkSets, setBulkSets] = useState('');
+  const [bulkReps, setBulkReps] = useState('');
+  const [bulkRest, setBulkRest] = useState('');
+
+  const allExerciseIds = blocks.flatMap((b) => b.exercises.map((e) => e.id));
   const previewTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Init
@@ -126,10 +134,25 @@ export function WorkoutEditorClient({ workoutId }: Props) {
             </span>
           )}
           {blocks.length > 0 && (
-            <button onClick={handleSaveAsTemplate} disabled={savingTemplate}
-              className="font-mono text-xs border border-border text-muted px-3 py-1.5 rounded-lg hover:border-muted hover:text-white disabled:opacity-50 transition-colors">
-              {savingTemplate ? '...' : '◫ Template'}
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  toggleBulkSelection();
+                  setBulkSets(''); setBulkReps(''); setBulkRest('');
+                }}
+                className={`font-mono text-xs border px-3 py-1.5 rounded-lg transition-colors ${
+                  bulkSelectionActive
+                    ? 'border-accent/50 text-accent bg-accent/8'
+                    : 'border-border text-muted hover:border-muted hover:text-white'
+                }`}
+              >
+                {bulkSelectionActive ? `✓ ${selectedExerciseIds.size} sel.` : '⊡ Selecionar'}
+              </button>
+              <button onClick={handleSaveAsTemplate} disabled={savingTemplate}
+                className="font-mono text-xs border border-border text-muted px-3 py-1.5 rounded-lg hover:border-muted hover:text-white disabled:opacity-50 transition-colors">
+                {savingTemplate ? '...' : '◫ Template'}
+              </button>
+            </>
           )}
           <button onClick={handleSave} disabled={saving || !isDirty}
             className="bg-accent text-dark font-syne font-black text-sm px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-accent/90 transition-colors">
@@ -174,6 +197,55 @@ export function WorkoutEditorClient({ workoutId }: Props) {
           ))
         )}
       </div>
+
+      {/* Bulk edit toolbar */}
+      {bulkSelectionActive && (
+        <div className="border-t border-accent/20 bg-[#0d0d13] px-6 py-3 flex items-center gap-3 flex-wrap">
+          <span className="font-mono text-[10px] text-accent tracking-widest uppercase">Aplicar a selecionados</span>
+          <div>
+            <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-0.5">Séries</p>
+            <input type="number" value={bulkSets} onChange={(e) => setBulkSets(e.target.value)}
+              placeholder="—" className={smInp} min={1} />
+          </div>
+          <div>
+            <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-0.5">Reps</p>
+            <input type="text" value={bulkReps} onChange={(e) => setBulkReps(e.target.value)}
+              placeholder="—" className={smInp} />
+          </div>
+          <div>
+            <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-0.5">Repouso (s)</p>
+            <input type="number" value={bulkRest} onChange={(e) => setBulkRest(e.target.value)}
+              placeholder="—" className={smInp} min={0} />
+          </div>
+          <div className="flex items-end gap-2 ml-auto">
+            <button
+              onClick={() => setAllSelected(allExerciseIds)}
+              className="font-mono text-[10px] text-muted hover:text-white border border-border px-2 py-1 rounded"
+            >
+              Todos ({allExerciseIds.length})
+            </button>
+            <button
+              onClick={clearSelection}
+              className="font-mono text-[10px] text-muted hover:text-white"
+            >
+              Limpar
+            </button>
+            <button
+              disabled={selectedExerciseIds.size === 0}
+              onClick={() => {
+                const changes: Record<string, unknown> = {};
+                if (bulkSets) changes.sets = parseInt(bulkSets);
+                if (bulkReps) changes.reps = bulkReps;
+                if (bulkRest) changes.restAfterSet = parseInt(bulkRest);
+                if (Object.keys(changes).length > 0) bulkUpdateExercises(selectedExerciseIds, changes as any);
+              }}
+              className="bg-accent text-dark font-syne font-black text-xs px-4 py-1.5 rounded-lg disabled:opacity-40 hover:bg-accent/90 transition-colors"
+            >
+              Aplicar a todos
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Add block bar */}
       <div className="border-t border-border bg-[#0d0d13] px-6 py-4">

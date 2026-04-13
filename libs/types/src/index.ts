@@ -329,6 +329,14 @@ export interface ClientStats {
   recentWorkoutLogs?: { id: string; date: string; durationMin?: number | null }[];
 }
 
+export interface ChurnRiskClient {
+  clientId: string;
+  clientName: string;
+  recentAdherencePct: number;   // semanas -3 a -1
+  previousAdherencePct: number; // semanas -6 a -4
+  dropPct: number;              // quebra relativa em %
+}
+
 export interface SessionsDistribution {
   byType: { type: string; count: number; pct: number }[];
   byStatus: { status: string; count: number; pct: number }[];

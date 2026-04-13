@@ -7,6 +7,7 @@ import {
   AcsmPrescription,
   CLINICAL_FLAGS_RULES,
   FREQUENCY_BY_LEVEL,
+  applyClinicalOverrides,
   mapObjectiveToAcsm,
   TrainingObjective,
   validatePrescription,
@@ -16,6 +17,7 @@ const THRESHOLD_WORKOUTS = 10; // mínimo de workouts para activar sugestões co
 
 export interface SuggestionRequest {
   clientId: string;
+  assessmentId?: string; // opcional — activa Karvonen se presente
   // Contexto da avaliação
   level: TrainingLevel;
   objective: string; // texto livre → mapeia para ACSM
@@ -57,7 +59,8 @@ export class SuggestionService {
 
   async suggest(req: SuggestionRequest): Promise<SuggestionResult> {
     const objective = mapObjectiveToAcsm(req.objective);
-    const prescription = ACSM_GUIDELINES[objective];
+    const basePrescription = ACSM_GUIDELINES[objective];
+    const prescription = applyClinicalOverrides(basePrescription, req.flags);
     const freqRec = FREQUENCY_BY_LEVEL[req.level];
 
     // ─── Estado do sistema (threshold) ─────────────────────────────────
@@ -87,10 +90,23 @@ export class SuggestionService {
       }
     }
 
-    // ─── Equipamento disponível ─────────────────────────────────────────
+    // ─── Equipamento disponível (fallback para assessment do cliente) ────
+    let equipment = req.equipment;
+    if (equipment.length === 0 && req.clientId) {
+      const latestAssessment = await this.prisma.assessment.findFirst({
+        where: { clientId: req.clientId },
+        orderBy: { createdAt: 'desc' },
+        select: { data: true },
+      });
+      const assessmentData = latestAssessment?.data as Record<string, unknown> | null;
+      const fromAssessment = assessmentData?.equipamento;
+      if (Array.isArray(fromAssessment) && fromAssessment.length > 0) {
+        equipment = fromAssessment as string[];
+      }
+    }
     const equipmentFilter =
-      req.equipment.length > 0
-        ? { hasSome: req.equipment as Equipment[] }
+      equipment.length > 0
+        ? { hasSome: equipment as Equipment[] }
         : undefined;
 
     // ─── Padrões a sugerir ──────────────────────────────────────────────
@@ -176,6 +192,28 @@ export class SuggestionService {
         `ACSM 2026: Para ${objective}, o volume óptimo é ${prescription.weeklySetsPerPattern.optimal} séries/padrão/semana.`,
       );
     }
+    // Aviso de RPE cap clínico
+    if (prescription.rpeMaxCap) {
+      warnings.push(`Limite de esforço clínico: RPE ≤${prescription.rpeMaxCap} (flag de risco cardiovascular).`);
+    }
+    // Karvonen: se assessmentId presente, verificar zonas de FC
+    if (req.assessmentId) {
+      const assessment = await this.prisma.assessment.findUnique({
+        where: { id: req.assessmentId },
+        select: { data: true, flags: true },
+      });
+      if (assessment) {
+        const data = assessment.data as Record<string, unknown>;
+        const computed = data?._computed as Record<string, unknown> | undefined;
+        const zones = computed?.karvonenZones as { zone2Max?: number } | undefined;
+        const isSedentary = req.flags.includes('sedentario') || assessment.flags.includes('sedentario');
+        if (zones?.zone2Max && isSedentary && prescription.percentRM.max > 60) {
+          warnings.push(
+            `Karvonen: perfil sedentário — manter %RM ≤60 nas primeiras 4 semanas (zona 2 FC: ≤${zones.zone2Max} bpm).`,
+          );
+        }
+      }
+    }
 
     return {
       prescription,
@@ -245,6 +283,8 @@ export class SuggestionService {
         fromExId: data.fromExId,
         toExId: data.toExId,
         level: data.level,
+        pattern: data.pattern,
+        objective,
         reason: data.reason,
       }),
     ]);

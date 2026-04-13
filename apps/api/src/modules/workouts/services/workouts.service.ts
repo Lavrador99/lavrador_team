@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -11,6 +12,8 @@ import {
   UpdateWorkoutDto,
 } from "../types/workouts.dto";
 import { calcWorkoutDuration } from "./workout-duration.calculator";
+import { workoutBlocksSchema, workoutLogEntriesSchema } from "../schemas/workout.schemas";
+import { extractPhaseDefaults } from "../../suggestion/services/acsm-guidelines.engine";
 import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -23,7 +26,38 @@ export class WorkoutsService {
   ) {}
 
   async create(dto: CreateWorkoutDto) {
-    const blocks = dto.blocks ?? [];
+    const rawBlocks = dto.blocks ?? [];
+    const blocksResult = workoutBlocksSchema.safeParse(rawBlocks);
+    if (!blocksResult.success) {
+      throw new BadRequestException(`Blocos inválidos: ${blocksResult.error.issues[0]?.message}`);
+    }
+    let blocks = blocksResult.data as any[];
+
+    // Aplicar defaults da fase do programa, se disponíveis
+    if (dto.programId) {
+      const program = await this.prisma.program.findUnique({
+        where: { id: dto.programId },
+        select: { phases: true },
+      });
+      if (program?.phases) {
+        const phases = program.phases as any[];
+        const currentWeek = Math.max(1, (dto.order ?? 0) + 1); // order 0-based → semana 1-based
+        const phaseDefaults = extractPhaseDefaults(phases, currentWeek);
+        if (phaseDefaults.sets || phaseDefaults.restBetweenSetsSeconds) {
+          blocks = blocks.map((block) => ({
+            ...block,
+            restBetweenSets: phaseDefaults.restBetweenSetsSeconds?.min ?? block.restBetweenSets,
+            exercises: (block.exercises ?? []).map((ex: any) => ({
+              ...ex,
+              sets: phaseDefaults.sets
+                ? Math.min(phaseDefaults.sets.max, Math.max(phaseDefaults.sets.min, ex.sets))
+                : ex.sets,
+            })),
+          }));
+        }
+      }
+    }
+
     const { totalMin } = calcWorkoutDuration(blocks);
 
     return this.repo.create({
@@ -77,10 +111,15 @@ export class WorkoutsService {
 
   async update(id: string, dto: UpdateWorkoutDto) {
     const workout = await this.findById(id);
-    const blocks = dto.blocks;
+    let blocks = dto.blocks;
     let durationEstimatedMin: number | undefined;
 
     if (blocks !== undefined) {
+      const blocksResult = workoutBlocksSchema.safeParse(blocks);
+      if (!blocksResult.success) {
+        throw new BadRequestException(`Blocos inválidos: ${blocksResult.error.issues[0]?.message}`);
+      }
+      blocks = blocksResult.data as typeof blocks;
       const { totalMin } = calcWorkoutDuration(blocks);
       durationEstimatedMin = totalMin;
     }
@@ -126,6 +165,11 @@ export class WorkoutsService {
   // ─── Logs ──────────────────────────────────────────────────────────────
   async createLog(dto: CreateWorkoutLogDto, clientId: string) {
     await this.findById(dto.workoutId);
+
+    const entriesResult = workoutLogEntriesSchema.safeParse(dto.entries);
+    if (!entriesResult.success) {
+      throw new BadRequestException(`Entradas inválidas: ${entriesResult.error.issues[0]?.message}`);
+    }
 
     const log = await this.repo.createLog({
       workoutId: dto.workoutId,
