@@ -50,67 +50,88 @@ export default function ExerciseHistoryPage() {
 
   const history = processEntries(rawHistory);
 
-  if (isLoading) {
-    return <div className="py-20 font-mono text-sm text-muted text-center">A carregar histórico...</div>;
-  }
+  if (isLoading) return <div className="py-20 text-sm text-zinc-500 text-center">A carregar histórico...</div>;
+
+  const best1RM = history.length ? Math.max(...history.map((e) => e.estimated1RM ?? 0)) : 0;
+  const bestLoad = history.length ? Math.max(...history.map((e) => e.maxLoad ?? 0)) : 0;
+  const totalVol = history.reduce((s, e) => s + e.volume, 0);
+
+  const summary = [
+    { label: 'Sessões',      value: String(history.length),                     color: 'text-blue-400' },
+    { label: 'Melhor 1RM',   value: best1RM ? `${best1RM} kg`   : '—',          color: 'text-[#84d4d3]' },
+    { label: 'Melhor carga', value: bestLoad ? `${bestLoad} kg` : '—',          color: 'text-orange-400' },
+    { label: 'Vol. total',   value: `${totalVol.toLocaleString('pt-PT')} kg`,   color: 'text-purple-400' },
+  ];
 
   return (
     <div>
-      <button onClick={() => router.back()} className="font-mono text-xs text-muted mb-4 flex items-center gap-1 hover:text-white transition-colors">
-        ← Voltar
+      {/* ── Back ──────────────────────────────────────────────────────────────── */}
+      <button
+        onClick={() => router.back()}
+        className="flex items-center gap-1 text-xs font-bold text-zinc-600 hover:text-white transition-colors mb-5"
+      >
+        <span className="material-symbols-outlined text-base">arrow_back</span>
+        Voltar
       </button>
-      <h1 className="font-syne font-black text-xl text-white mb-1">{name}</h1>
-      <p className="font-mono text-xs text-muted mb-6">// Histórico de desempenho</p>
+
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="mb-6">
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-600 mb-1">Histórico</div>
+        <h1 className="font-[Manrope] font-black text-xl text-white leading-tight">{name}</h1>
+      </div>
 
       {!history.length ? (
-        <div className="py-20 font-mono text-sm text-muted text-center">Sem dados de histórico.</div>
+        <div className="py-20 text-sm text-zinc-500 text-center">Sem dados de histórico.</div>
       ) : (
         <>
-          {/* Summary cards */}
+          {/* ── Summary cards ─────────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-3 mb-6">
-            {[
-              { label: 'Sessões', val: String(history.length), color: '#42a5f5' },
-              {
-                label: 'Melhor 1RM est.',
-                val: Math.max(...history.map((e) => e.estimated1RM ?? 0)) + ' kg',
-                color: '#c8f542',
-              },
-              {
-                label: 'Melhor carga',
-                val: Math.max(...history.map((e) => e.maxLoad ?? 0)) + ' kg',
-                color: '#f5a442',
-              },
-              {
-                label: 'Volume total',
-                val: history.reduce((s, e) => s + e.volume, 0).toLocaleString('pt-PT') + ' kg',
-                color: '#a855f7',
-              },
-            ].map(({ label, val, color }) => (
-              <div key={label} className="bg-panel border border-border rounded-xl p-4" style={{ borderTopColor: color, borderTopWidth: 2 }}>
-                <div className="font-syne font-black text-xl" style={{ color }}>{val}</div>
-                <div className="font-mono text-[10px] text-muted tracking-widest uppercase mt-1">{label}</div>
+            {summary.map(({ label, value, color }) => (
+              <div key={label} className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800/60">
+                <div className={`font-[Manrope] font-black text-xl ${color}`}>{value}</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mt-1">{label}</div>
               </div>
             ))}
           </div>
 
-          {/* History table */}
-          <h2 className="font-syne font-bold text-sm text-white mb-3">Histórico de sessões</h2>
+          {/* ── 1RM bar chart ────────────────────────────────────────────────── */}
+          {history.some((e) => e.estimated1RM) && (
+            <div className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800/60 mb-6">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mb-3">Progressão 1RM estimado</p>
+              <div className="flex items-end gap-1 h-16">
+                {history.slice(-10).map((e, i) => {
+                  const h = e.estimated1RM ? (e.estimated1RM / best1RM) * 100 : 4;
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <div
+                        className="w-full rounded-sm transition-all"
+                        style={{ height: `${h}%`, background: '#84d4d3', opacity: 0.4 + (i / 10) * 0.6 }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Session history ──────────────────────────────────────────────── */}
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-600 mb-3">Sessões</div>
           <div className="flex flex-col gap-2">
             {[...history].reverse().map((e, i) => (
-              <div key={i} className="bg-panel border border-border rounded-xl px-4 py-3 flex items-center gap-4">
+              <div key={i} className="bg-zinc-900 rounded-xl px-4 py-3 border border-zinc-800/60 flex items-center gap-4">
                 <div className="flex-1">
-                  <div className="font-mono text-xs text-muted">
+                  <div className="text-xs text-zinc-500">
                     {new Date(e.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </div>
                   {e.maxLoad && (
-                    <div className="font-sans text-sm text-white mt-0.5">{e.maxLoad} kg</div>
+                    <div className="text-sm text-white mt-0.5 font-semibold">{e.maxLoad} kg</div>
                   )}
                 </div>
                 <div className="text-right">
                   {e.estimated1RM && (
-                    <div className="font-syne font-black text-accent text-sm">~{e.estimated1RM} kg 1RM</div>
+                    <div className="font-[Manrope] font-black text-[#84d4d3] text-sm">~{e.estimated1RM} kg 1RM</div>
                   )}
-                  <div className="font-mono text-[10px] text-muted">{e.totalReps} reps · {e.volume} vol</div>
+                  <div className="text-xs text-zinc-600 mt-0.5">{e.totalReps} reps · {e.volume.toLocaleString()} vol</div>
                 </div>
               </div>
             ))}

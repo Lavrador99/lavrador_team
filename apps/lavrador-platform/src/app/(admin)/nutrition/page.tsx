@@ -7,6 +7,8 @@ import { clientsApi } from '../../../lib/api/clients.api';
 const DAY_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const emptyItem = (): MealItem => ({ foodName: '', grams: 0, kcal: 0, protein: 0, carbs: 0, fat: 0 });
 
+const INPUT_CLS = 'w-full bg-surface-container-highest border-none rounded-lg px-4 py-3 text-sm text-on-surface placeholder:text-outline focus:ring-0 focus:bg-surface-container-lowest border-b-2 border-transparent focus:border-primary outline-none transition-all';
+
 export default function NutritionPage() {
   const { data: clients = [] } = useSWR('clients-all', clientsApi.getAll);
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -66,18 +68,18 @@ export default function NutritionPage() {
     await refreshPlan(activePlan.id);
   }
 
-  const inputCls = 'w-full bg-[#0d0d13] border border-border rounded-lg px-3 py-2 text-sm text-white font-sans placeholder-faint focus:outline-none focus:border-accent';
   const selectedDay = activePlan?.days[activeDay];
   const dayKcal = selectedDay?.meals.reduce((s, m) => s + m.kcal, 0) ?? 0;
 
   return (
     <div>
-      <h1 className="font-syne font-black text-2xl text-white mb-6">Nutrição</h1>
+      <div className="mb-8">
+        <span className="label-category text-primary">Planeamento</span>
+        <h1 className="font-headline font-extrabold text-3xl text-on-surface tracking-tight mt-1">Nutrição</h1>
+      </div>
 
-      {/* Client selector */}
-      <div className="mb-5">
-        <select value={selectedClientId} onChange={e => loadPlans(e.target.value)}
-          className={inputCls + ' max-w-xs'}>
+      <div className="mb-6">
+        <select value={selectedClientId} onChange={e => loadPlans(e.target.value)} className={INPUT_CLS + ' max-w-xs'}>
           <option value="">Seleccionar cliente</option>
           {clients.map((c: any) => (
             <option key={c.id} value={c.client?.id ?? c.id}>{c.client?.name ?? c.email}</option>
@@ -87,31 +89,45 @@ export default function NutritionPage() {
 
       {selectedClientId && (
         <>
-          {/* Plan list */}
+          {/* Plan tabs */}
           <div className="flex gap-2 flex-wrap mb-4">
             {plans.map(p => (
-              <button key={p.id} onClick={() => setActivePlan(p)}
-                className={`font-mono text-xs px-3 py-1.5 rounded-lg border transition-colors ${activePlan?.id === p.id ? 'border-accent bg-accent/10 text-accent' : 'border-border text-muted hover:text-white'}`}>
+              <button
+                key={p.id}
+                onClick={() => setActivePlan(p)}
+                className={`font-label font-bold text-xs px-3 py-1.5 rounded-lg transition-colors ${
+                  activePlan?.id === p.id
+                    ? 'bg-primary text-on-primary shadow-ambient'
+                    : 'bg-surface-container-high text-secondary hover:text-on-surface'
+                }`}
+              >
                 {p.name}
               </button>
             ))}
-            <button onClick={() => setShowCreatePlan(!showCreatePlan)}
-              className="font-mono text-xs px-3 py-1.5 rounded-lg border border-dashed border-border text-muted hover:text-white hover:border-muted transition-colors">
-              + Plano
+            <button
+              onClick={() => setShowCreatePlan(!showCreatePlan)}
+              className="font-label font-bold text-xs px-3 py-1.5 rounded-lg border border-dashed border-outline-variant text-outline hover:text-secondary transition-colors flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              Plano
             </button>
           </div>
 
           {showCreatePlan && (
-            <div className="bg-panel border border-border rounded-xl p-4 mb-4 flex gap-3 flex-wrap items-end">
+            <div className="bg-surface-container-lowest rounded-xl p-5 mb-5 flex gap-3 flex-wrap items-end shadow-sm">
               <div className="flex-1">
-                <label className="font-mono text-[10px] text-muted uppercase tracking-widest block mb-1">Nome</label>
-                <input value={planName} onChange={e => setPlanName(e.target.value)} className={inputCls} placeholder="Plano de manutenção" />
+                <label className="label-category block mb-1.5">Nome</label>
+                <input value={planName} onChange={e => setPlanName(e.target.value)} className={INPUT_CLS} placeholder="Plano de manutenção" />
               </div>
               <div>
-                <label className="font-mono text-[10px] text-muted uppercase tracking-widest block mb-1">Início</label>
-                <input type="date" value={planStart} onChange={e => setPlanStart(e.target.value)} className={inputCls} />
+                <label className="label-category block mb-1.5">Início</label>
+                <input type="date" value={planStart} onChange={e => setPlanStart(e.target.value)} className={INPUT_CLS} />
               </div>
-              <button onClick={handleCreatePlan} disabled={savingPlan || !planName} className="bg-accent text-dark font-syne font-black text-sm px-4 py-2 rounded-lg disabled:opacity-50">
+              <button
+                onClick={handleCreatePlan}
+                disabled={savingPlan || !planName}
+                className="kinetic-gradient text-on-primary font-headline font-bold text-sm px-5 py-3 rounded-lg disabled:opacity-40 active:scale-95 transition-all"
+              >
                 {savingPlan ? '...' : 'Criar'}
               </button>
             </div>
@@ -120,43 +136,57 @@ export default function NutritionPage() {
           {activePlan && (
             <>
               {/* Day tabs */}
-              <div className="flex gap-1.5 mb-4 overflow-x-auto">
+              <div className="flex gap-1.5 mb-5 overflow-x-auto">
                 {activePlan.days.map((d, i) => (
-                  <button key={d.id} onClick={() => setActiveDay(i)}
-                    className={`font-mono text-xs px-3 py-1.5 rounded-lg border flex-shrink-0 transition-colors ${activeDay === i ? 'border-accent bg-accent/10 text-accent' : 'border-border text-muted hover:text-white'}`}>
+                  <button
+                    key={d.id}
+                    onClick={() => setActiveDay(i)}
+                    className={`font-label font-bold text-xs px-3 py-1.5 rounded-lg flex-shrink-0 transition-colors ${
+                      activeDay === i
+                        ? 'bg-primary text-on-primary'
+                        : 'bg-surface-container-high text-secondary hover:text-on-surface'
+                    }`}
+                  >
                     {DAY_LABELS[d.dayOfWeek] ?? `Dia ${d.dayOfWeek + 1}`}
                   </button>
                 ))}
               </div>
 
-              {/* Day summary */}
               {selectedDay && (
-                <div className="mb-4">
-                  <div className="font-mono text-xs text-muted mb-3">Total: <span className="text-accent font-bold">{dayKcal} kcal</span></div>
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="label-category">Total do dia</span>
+                    <span className="font-headline font-bold text-primary text-lg">{dayKcal} kcal</span>
+                  </div>
                   <div className="flex flex-col gap-3">
                     {selectedDay.meals.map(meal => (
-                      <div key={meal.id} className="bg-panel border border-border rounded-xl overflow-hidden">
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                      <div key={meal.id} className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+                        <div className="flex items-center justify-between px-4 py-3 bg-surface-container-low">
                           <div>
-                            <div className="font-sans font-semibold text-sm text-white">{meal.name}</div>
-                            <div className="font-mono text-[10px] text-muted mt-0.5">{meal.kcal} kcal</div>
+                            <div className="font-headline font-bold text-sm text-on-surface">{meal.name}</div>
+                            <div className="label-category mt-0.5">{meal.kcal} kcal</div>
                           </div>
-                          <button onClick={() => handleDeleteMeal(meal.id)} className="font-mono text-xs text-red-400 hover:text-red-300">✕</button>
+                          <button onClick={() => handleDeleteMeal(meal.id)} className="text-outline hover:text-error transition-colors p-1">
+                            <span className="material-symbols-outlined text-base">close</span>
+                          </button>
                         </div>
-                        <div className="px-4 py-2 flex flex-col gap-1">
+                        <div className="px-4 py-3 space-y-1.5">
                           {meal.items.map((item, i) => (
-                            <div key={i} className="flex justify-between font-mono text-[10px] text-muted">
+                            <div key={i} className="flex justify-between font-label text-xs text-secondary">
                               <span>{item.foodName} ({item.grams}g)</span>
-                              <span>{item.kcal} kcal · P:{item.protein}g C:{item.carbs}g G:{item.fat}g</span>
+                              <span className="text-outline">{item.kcal} kcal · P:{item.protein}g C:{item.carbs}g G:{item.fat}g</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     ))}
                   </div>
-
-                  <button onClick={() => setShowAddMeal(true)} className="mt-3 w-full font-mono text-xs text-muted border border-dashed border-border rounded-xl py-3 hover:text-white hover:border-muted transition-colors">
-                    + Adicionar refeição
+                  <button
+                    onClick={() => setShowAddMeal(true)}
+                    className="mt-4 w-full font-label font-bold text-xs text-secondary border border-dashed border-outline-variant rounded-xl py-3 hover:text-on-surface hover:border-outline transition-colors flex items-center justify-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    Adicionar refeição
                   </button>
                 </div>
               )}
@@ -167,35 +197,49 @@ export default function NutritionPage() {
 
       {/* Add meal modal */}
       {showAddMeal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowAddMeal(false)}>
-          <div className="bg-panel border border-border rounded-2xl p-6 w-full max-w-lg space-y-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="font-syne font-black text-lg text-white">Nova refeição</div>
+        <div className="fixed inset-0 bg-on-surface/40 flex items-center justify-center z-50 p-4" onClick={() => setShowAddMeal(false)}>
+          <div className="bg-surface-container-lowest rounded-2xl p-6 w-full max-w-lg space-y-4 max-h-[80vh] overflow-y-auto shadow-ambient-lg" onClick={e => e.stopPropagation()}>
+            <h2 className="font-headline font-black text-xl text-on-surface">Nova refeição</h2>
             <div>
-              <label className="font-mono text-[10px] text-muted uppercase tracking-widest block mb-1">Nome</label>
-              <input value={mealName} onChange={e => setMealName(e.target.value)} className={inputCls} placeholder="Pequeno-almoço" />
+              <label className="label-category block mb-1.5">Nome</label>
+              <input value={mealName} onChange={e => setMealName(e.target.value)} className={INPUT_CLS} placeholder="Pequeno-almoço" />
             </div>
             {mealItems.map((item, i) => (
-              <div key={i} className="bg-[#0d0d13] border border-border rounded-xl p-3 space-y-2">
-                <input value={item.foodName} onChange={e => { const arr = [...mealItems]; arr[i] = { ...arr[i], foodName: e.target.value }; setMealItems(arr); }}
-                  className={inputCls} placeholder="Alimento" />
+              <div key={i} className="bg-surface-container-low rounded-xl p-4 space-y-3">
+                <input
+                  value={item.foodName}
+                  onChange={e => { const arr = [...mealItems]; arr[i] = { ...arr[i], foodName: e.target.value }; setMealItems(arr); }}
+                  className={INPUT_CLS}
+                  placeholder="Alimento"
+                />
                 <div className="grid grid-cols-3 gap-2">
                   {(['grams', 'kcal', 'protein', 'carbs', 'fat'] as const).map(field => (
                     <div key={field}>
-                      <label className="font-mono text-[9px] text-faint uppercase tracking-widest block mb-0.5">{field}</label>
-                      <input type="number" min={0} value={item[field]}
+                      <label className="label-category block mb-1">{field}</label>
+                      <input
+                        type="number" min={0} value={item[field]}
                         onChange={e => { const arr = [...mealItems]; arr[i] = { ...arr[i], [field]: Number(e.target.value) }; setMealItems(arr); }}
-                        className={inputCls + ' text-xs'} />
+                        className={INPUT_CLS + ' text-xs'}
+                      />
                     </div>
                   ))}
                 </div>
               </div>
             ))}
-            <button onClick={() => setMealItems(prev => [...prev, emptyItem()])} className="font-mono text-xs text-muted hover:text-white border border-dashed border-border rounded-lg py-2 w-full">
-              + Alimento
+            <button
+              onClick={() => setMealItems(prev => [...prev, emptyItem()])}
+              className="font-label font-bold text-xs text-secondary hover:text-on-surface border border-dashed border-outline-variant rounded-lg py-2 w-full flex items-center justify-center gap-1 transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              Alimento
             </button>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowAddMeal(false)} className="font-sans text-sm text-muted hover:text-white px-4 py-2">Cancelar</button>
-              <button onClick={handleAddMeal} disabled={savingMeal || !mealName} className="bg-accent text-dark font-syne font-black text-sm px-5 py-2 rounded-lg disabled:opacity-50">
+              <button onClick={() => setShowAddMeal(false)} className="text-sm text-secondary hover:text-on-surface px-4 py-2 transition-colors">Cancelar</button>
+              <button
+                onClick={handleAddMeal}
+                disabled={savingMeal || !mealName}
+                className="kinetic-gradient text-on-primary font-headline font-bold text-sm px-6 py-2.5 rounded-lg disabled:opacity-40 active:scale-95 transition-all"
+              >
                 {savingMeal ? '...' : 'Guardar'}
               </button>
             </div>

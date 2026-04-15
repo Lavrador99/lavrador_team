@@ -16,7 +16,7 @@ const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho'
 function buildGrid(year: number, month: number) {
   const first = new Date(year, month, 1);
   const last = new Date(year, month + 1, 0);
-  const startDow = (first.getDay() + 6) % 7; // Monday = 0
+  const startDow = (first.getDay() + 6) % 7;
   const grid: (number | null)[] = [];
   for (let i = 0; i < startDow; i++) grid.push(null);
   for (let d = 1; d <= last.getDate(); d++) grid.push(d);
@@ -31,12 +31,8 @@ export default function CalendarPage() {
 
   const { data: entries = [] } = useSWR<CalendarEntry[]>('my-calendar', () => workoutsApi.getMyCalendar());
 
-  // Build date → entry map
   const dateMap = new Map<string, CalendarEntry>();
-  for (const e of entries) {
-    const key = e.date.slice(0, 10);
-    dateMap.set(key, e);
-  }
+  for (const e of entries) dateMap.set(e.date.slice(0, 10), e);
 
   const grid = buildGrid(year, month);
   const totalDays = entries.length;
@@ -50,7 +46,9 @@ export default function CalendarPage() {
     if (month === 11) { setYear(y => y + 1); setMonth(0); } else setMonth(m => m + 1);
     setSelected(null);
   }
-
+  function goToday() {
+    setYear(today.getFullYear()); setMonth(today.getMonth()); setSelected(today.getDate());
+  }
   function dateKey(d: number) {
     return `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   }
@@ -59,34 +57,51 @@ export default function CalendarPage() {
 
   return (
     <div>
-      <h1 className="font-syne font-black text-2xl text-white mb-2">Calendário</h1>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="mb-6">
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-600 mb-1">Histórico</div>
+        <h1 className="font-[Manrope] font-black text-2xl text-white leading-tight">Calendário</h1>
+      </div>
 
-      {/* Stats */}
-      <div className="flex gap-4 mb-6">
-        <div className="bg-panel border border-border rounded-xl px-4 py-3 flex-1">
-          <div className="font-syne font-black text-2xl text-accent">{totalDays}</div>
-          <div className="font-mono text-[10px] text-muted tracking-widest uppercase mt-0.5">Dias treinados</div>
+      {/* ── Stats ─────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="bg-zinc-900 rounded-2xl px-4 py-4 border border-[#84d4d3]/20">
+          <div className="font-[Manrope] font-black text-3xl text-[#84d4d3]">{totalDays}</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mt-1">Dias treinados</div>
         </div>
-        <div className="bg-panel border border-border rounded-xl px-4 py-3 flex-1">
-          <div className="font-syne font-black text-2xl text-[#f5a442]">{Math.round(totalMin / 60)}h</div>
-          <div className="font-mono text-[10px] text-muted tracking-widest uppercase mt-0.5">Total de treino</div>
+        <div className="bg-zinc-900 rounded-2xl px-4 py-4 border border-zinc-800/60">
+          <div className="font-[Manrope] font-black text-3xl text-white">{Math.round(totalMin / 60)}h</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mt-1">Total de treino</div>
         </div>
       </div>
 
-      {/* Calendar grid */}
-      <div className="bg-panel border border-border rounded-xl p-4">
+      {/* ── Calendar grid ────────────────────────────────────────────────────── */}
+      <div className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800/60">
+        {/* Nav row */}
         <div className="flex items-center justify-between mb-4">
-          <button onClick={prevMonth} className="text-muted hover:text-white transition-colors px-2">←</button>
-          <span className="font-syne font-bold text-sm text-white">
-            {MONTHS_PT[month]} {year}
-          </span>
-          <button onClick={nextMonth} className="text-muted hover:text-white transition-colors px-2">→</button>
+          <button onClick={prevMonth} className="text-zinc-600 hover:text-white transition-colors p-1">
+            <span className="material-symbols-outlined text-base">chevron_left</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="font-[Manrope] font-bold text-sm text-white">
+              {MONTHS_PT[month]} {year}
+            </span>
+            <button
+              onClick={goToday}
+              className="text-[10px] font-bold uppercase tracking-widest text-[#84d4d3] bg-[#005050]/30 px-2 py-0.5 rounded-lg"
+            >
+              Hoje
+            </button>
+          </div>
+          <button onClick={nextMonth} className="text-zinc-600 hover:text-white transition-colors p-1">
+            <span className="material-symbols-outlined text-base">chevron_right</span>
+          </button>
         </div>
 
         {/* Weekday headers */}
         <div className="grid grid-cols-7 mb-2">
           {WEEKDAYS.map((d, i) => (
-            <div key={i} className="text-center font-mono text-[10px] text-faint tracking-widest">{d}</div>
+            <div key={i} className="text-center text-[10px] font-bold text-zinc-600">{d}</div>
           ))}
         </div>
 
@@ -102,19 +117,20 @@ export default function CalendarPage() {
               <button
                 key={i}
                 onClick={() => setSelected(d === selected ? null : d)}
-                className={`relative aspect-square rounded-lg flex flex-col items-center justify-center transition-all text-sm ${
+                className={`relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all text-xs font-bold ${
                   isSel
-                    ? 'bg-accent text-dark font-black'
+                    ? 'text-black'
                     : isToday
-                    ? 'border border-accent/40 text-accent'
+                    ? 'bg-[#005050]/40 text-[#84d4d3] border border-[#84d4d3]/30'
                     : trained
-                    ? 'bg-accent/10 text-white'
-                    : 'text-muted hover:text-white hover:bg-white/5'
+                    ? 'bg-zinc-800 text-white'
+                    : 'text-zinc-700 hover:text-zinc-400'
                 }`}
+                style={isSel ? { background: '#c8f542' } : {}}
               >
-                <span className="font-mono text-xs">{d}</span>
+                {d}
                 {trained && !isSel && (
-                  <div className="absolute bottom-1 w-1 h-1 rounded-full bg-accent" />
+                  <div className="absolute bottom-1 w-1 h-1 rounded-full bg-[#84d4d3]" />
                 )}
               </button>
             );
@@ -122,21 +138,24 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Selected day detail */}
+      {/* ── Selected day detail ──────────────────────────────────────────────── */}
       {selected && (
-        <div className="mt-4 bg-panel border border-border rounded-xl p-4">
+        <div className="mt-4 bg-zinc-900 rounded-2xl p-4 border border-zinc-800/60">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-[#84d4d3] mb-2">
+            {String(selected).padStart(2, '0')} {MONTHS_PT[month]}
+          </div>
           {selectedEntry ? (
             <>
-              <div className="font-mono text-[10px] text-accent tracking-widest uppercase mb-2">
-                {String(selected).padStart(2, '0')} {MONTHS_PT[month]}
-              </div>
-              <div className="font-syne font-bold text-base text-white">{selectedEntry.workoutName}</div>
+              <div className="font-[Manrope] font-bold text-base text-white">{selectedEntry.workoutName}</div>
               {selectedEntry.durationMin && (
-                <div className="font-mono text-xs text-muted mt-1">{selectedEntry.durationMin} min</div>
+                <div className="flex items-center gap-1 text-xs text-zinc-500 mt-1">
+                  <span className="material-symbols-outlined text-sm">schedule</span>
+                  {selectedEntry.durationMin} min
+                </div>
               )}
             </>
           ) : (
-            <div className="font-mono text-xs text-muted">Sem treino registado neste dia.</div>
+            <div className="text-sm text-zinc-500">Sem treino registado neste dia.</div>
           )}
         </div>
       )}

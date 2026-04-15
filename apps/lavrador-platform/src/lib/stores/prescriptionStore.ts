@@ -16,6 +16,7 @@ interface PrescriptionState {
   assessment: AssessmentDto | null;
   program: ProgramDto | null;
   clientId: string | null;
+  clientName: string | null;
   loading: boolean;
   error: string | null;
 
@@ -23,7 +24,9 @@ interface PrescriptionState {
   nextStep: () => void;
   prevStep: () => void;
   setClientId: (id: string) => void;
+  setClientName: (name: string) => void;
   updateFormData: (data: Partial<AssessmentData>) => void;
+  prefillFromAssessment: (data: Partial<AssessmentData>) => void;
   addSelection: (sel: ExerciseSelection) => void;
   replaceSelection: (oldId: string, newSel: ExerciseSelection) => void;
   removeSelection: (id: string) => void;
@@ -41,6 +44,7 @@ const initial = {
   assessment: null,
   program: null,
   clientId: null,
+  clientName: null,
   loading: false,
   error: null,
 };
@@ -52,7 +56,9 @@ export const usePrescriptionStore = create<PrescriptionState>((set) => ({
   nextStep: () => set((s) => ({ currentStep: s.currentStep + 1 })),
   prevStep: () => set((s) => ({ currentStep: Math.max(0, s.currentStep - 1) })),
   setClientId: (id) => set({ clientId: id }),
+  setClientName: (name) => set({ clientName: name }),
   updateFormData: (data) => set((s) => ({ formData: { ...s.formData, ...data } })),
+  prefillFromAssessment: (data) => set({ formData: { ...data }, selections: [], assessment: null, program: null, currentStep: 0 }),
 
   addSelection: (sel) =>
     set((s) => {

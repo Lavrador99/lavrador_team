@@ -17,9 +17,14 @@ interface SocketUser {
   role: string;
 }
 
+const WS_ORIGINS = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : ['http://localhost:4501', 'http://localhost:4502'];
+
 @WebSocketGateway({
-  cors: { origin: process.env.CORS_ORIGIN ?? 'http://localhost:4501', credentials: true },
+  cors: { origin: WS_ORIGINS, credentials: true },
   namespace: '/messages',
+  transports: ['websocket', 'polling'],
 })
 export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server!: Server;

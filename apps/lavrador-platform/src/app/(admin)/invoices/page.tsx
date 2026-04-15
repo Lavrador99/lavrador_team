@@ -3,13 +3,8 @@ import useSWR from 'swr';
 import { useState } from 'react';
 import { invoicesApi, InvoiceDto, InvoiceStatus } from '../../../lib/api/invoices.api';
 import { clientsApi } from '../../../lib/api/clients.api';
-
-const STATUS_LABEL: Record<InvoiceStatus, string> = {
-  PENDING: 'Pendente', PAID: 'Pago', OVERDUE: 'Em atraso', CANCELLED: 'Cancelado',
-};
-const STATUS_COLOR: Record<InvoiceStatus, string> = {
-  PENDING: '#42a5f5', PAID: '#c8f542', OVERDUE: '#ff3b3b', CANCELLED: '#444455',
-};
+import { PageHeader, EmptyState, LoadingState, InputField, SelectField, TextareaField } from '../../../components/ui';
+import { INVOICE_STATUS_STYLE, INVOICE_STATUS_LABEL } from '../../../lib/constants/styles';
 
 const today = () => new Date().toISOString().split('T')[0];
 
@@ -22,8 +17,10 @@ export default function InvoicesPage() {
   const [saving, setSaving] = useState(false);
 
   const filtered = filter === 'ALL' ? invoices : invoices.filter((i) => i.status === filter);
-  const totalPaid = invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + i.amount, 0);
-  const totalPending = invoices.filter(i => i.status === 'PENDING').reduce((s, i) => s + i.amount, 0);
+  const totalPaid    = invoices.filter((i) => i.status === 'PAID').reduce((s, i) => s + i.amount, 0);
+  const totalPending = invoices.filter((i) => i.status === 'PENDING').reduce((s, i) => s + i.amount, 0);
+
+  const set = <K extends keyof typeof form>(k: K, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,9 +38,7 @@ export default function InvoicesPage() {
       setForm({ clientId: '', amount: '', currency: 'EUR', description: '', dueDate: today(), notes: '' });
       setShowForm(false);
       mutate();
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const handleStatus = async (id: string, status: InvoiceStatus) => {
@@ -51,56 +46,61 @@ export default function InvoicesPage() {
     mutate();
   };
 
-  const inputCls = 'w-full bg-[#0d0d13] border border-border rounded-lg px-3 py-2 text-sm text-white font-sans placeholder-faint focus:outline-none focus:border-accent';
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-syne font-black text-2xl text-white">Facturação</h1>
-          <p className="font-mono text-xs text-muted mt-1">// {invoices.length} facturas</p>
-        </div>
-        <button onClick={() => setShowForm(!showForm)} className="bg-accent text-dark font-syne font-black text-sm px-4 py-2 rounded-lg hover:bg-accent/90">
-          + Nova factura
-        </button>
-      </div>
+      <PageHeader
+        label="Financeiro"
+        title="Facturação"
+        subtitle={`${invoices.length} facturas`}
+        action={
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="kinetic-gradient text-on-primary font-headline font-bold text-sm px-5 py-2.5 rounded-lg shadow-ambient flex items-center gap-2 active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-base">receipt_long</span>
+            Nova factura
+          </button>
+        }
+      />
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-panel border border-border rounded-xl p-4" style={{ borderTopColor: '#c8f542', borderTopWidth: 2 }}>
-          <div className="font-syne font-black text-2xl text-accent">{totalPaid.toFixed(2)} €</div>
-          <div className="font-mono text-[10px] text-muted tracking-widest uppercase mt-1">Recebido</div>
+      {/* KPI row */}
+      <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border-l-4 border-primary">
+          <span className="label-category">Recebido</span>
+          <div className="font-headline font-black text-3xl text-primary mt-2">{totalPaid.toFixed(2)} €</div>
         </div>
-        <div className="bg-panel border border-border rounded-xl p-4" style={{ borderTopColor: '#42a5f5', borderTopWidth: 2 }}>
-          <div className="font-syne font-black text-2xl text-[#42a5f5]">{totalPending.toFixed(2)} €</div>
-          <div className="font-mono text-[10px] text-muted tracking-widest uppercase mt-1">Pendente</div>
+        <div className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border-l-4 border-blue-500">
+          <span className="label-category">Pendente</span>
+          <div className="font-headline font-black text-3xl text-blue-600 mt-2">{totalPending.toFixed(2)} €</div>
         </div>
       </div>
 
       {/* Create form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-panel border border-border rounded-xl p-5 mb-6 space-y-3">
-          <div className="font-mono text-[10px] text-muted tracking-widest uppercase mb-2">Nova factura</div>
+        <form onSubmit={handleCreate} className="bg-surface-container-lowest rounded-xl p-6 mb-6 space-y-4 shadow-sm">
+          <h3 className="font-headline font-bold text-base text-on-surface">Nova factura</h3>
           <div className="grid grid-cols-2 gap-3">
-            <select value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value }))} className={inputCls} required>
+            <SelectField label="Cliente" value={form.clientId} onChange={(e) => set('clientId', e.target.value)} required>
               <option value="">Seleccionar cliente</option>
-              {clients.map((c: any) => (
+              {(clients as any[]).map((c) => (
                 <option key={c.id} value={c.client?.id ?? c.id}>{c.client?.name ?? c.email}</option>
               ))}
-            </select>
+            </SelectField>
             <div className="flex gap-2">
-              <input type="number" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className={inputCls} placeholder="Valor" required />
-              <select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} className={inputCls + ' w-24'}>
+              <InputField label="Valor" type="number" step="0.01" value={form.amount} onChange={(e) => set('amount', e.target.value)} placeholder="0.00" required />
+              <SelectField label="Moeda" value={form.currency} onChange={(e) => set('currency', e.target.value)} className="w-24">
                 <option>EUR</option><option>USD</option><option>GBP</option>
-              </select>
+              </SelectField>
             </div>
-            <input type="text" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className={inputCls} placeholder="Descrição *" required />
-            <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} className={inputCls} />
+            <InputField label="Descrição" value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Descrição *" required />
+            <InputField label="Data de vencimento" type="date" value={form.dueDate} onChange={(e) => set('dueDate', e.target.value)} />
           </div>
-          <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className={inputCls + ' resize-none'} rows={2} placeholder="Notas (opcional)" />
+          <TextareaField label="Notas" value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={2} placeholder="Notas (opcional)" />
           <div className="flex gap-2 justify-end">
-            <button type="button" onClick={() => setShowForm(false)} className="font-sans text-sm text-muted hover:text-white px-4 py-2">Cancelar</button>
-            <button type="submit" disabled={saving} className="bg-accent text-dark font-syne font-black text-sm px-5 py-2 rounded-lg disabled:opacity-50">
+            <button type="button" onClick={() => setShowForm(false)} className="text-sm text-secondary hover:text-on-surface px-4 py-2 transition-colors">
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving} className="kinetic-gradient text-on-primary font-headline font-bold text-sm px-6 py-2.5 rounded-lg disabled:opacity-40 active:scale-95 transition-all">
               {saving ? '...' : 'Criar'}
             </button>
           </div>
@@ -108,40 +108,58 @@ export default function InvoicesPage() {
       )}
 
       {/* Filter tabs */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-5 flex-wrap">
         {(['ALL', 'PENDING', 'PAID', 'OVERDUE', 'CANCELLED'] as const).map((s) => (
-          <button key={s} onClick={() => setFilter(s)}
-            className={`font-mono text-xs px-3 py-1.5 rounded-lg border transition-colors ${filter === s ? 'border-accent bg-accent/10 text-accent' : 'border-border text-muted hover:text-white'}`}>
-            {s === 'ALL' ? 'Todas' : STATUS_LABEL[s as InvoiceStatus]}
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className={`font-label font-bold text-xs px-3 py-1.5 rounded-lg transition-colors ${
+              filter === s ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-secondary hover:text-on-surface'
+            }`}
+          >
+            {s === 'ALL' ? 'Todas' : INVOICE_STATUS_LABEL[s]}
           </button>
         ))}
       </div>
 
       {isLoading ? (
-        <div className="py-20 font-mono text-sm text-muted text-center">A carregar...</div>
+        <LoadingState />
       ) : (
-        <div className="flex flex-col gap-2">
-          {filtered.map((inv) => (
-            <div key={inv.id} className="bg-panel border border-border rounded-xl px-4 py-3 flex items-center gap-4">
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_COLOR[inv.status] }} />
-              <div className="flex-1 min-w-0">
-                <div className="font-sans text-sm text-white">{inv.description}</div>
-                <div className="font-mono text-[10px] text-muted mt-0.5">
-                  Vence: {new Date(inv.dueDate).toLocaleDateString('pt-PT')}
+        <div className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+          {filtered.length === 0 ? (
+            <EmptyState icon="receipt_long" title="Nenhuma factura encontrada." size="section" />
+          ) : (
+            filtered.map((inv, idx) => {
+              const st = INVOICE_STATUS_STYLE[inv.status] ?? INVOICE_STATUS_STYLE.PENDING;
+              return (
+                <div
+                  key={inv.id}
+                  className={`px-5 py-4 flex items-center gap-4 ${idx < filtered.length - 1 ? 'border-b border-outline-variant/10' : ''}`}
+                >
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${st.dot}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-body text-sm font-semibold text-on-surface">{inv.description}</div>
+                    <div className="font-label text-xs text-secondary mt-0.5">
+                      Vence: {new Date(inv.dueDate).toLocaleDateString('pt-PT')}
+                    </div>
+                  </div>
+                  <div className={`font-headline font-black text-base ${st.text}`}>
+                    {inv.amount.toFixed(2)} {inv.currency}
+                  </div>
+                  <span className={`label-category px-2 py-0.5 rounded-full ${st.badge}`}>
+                    {INVOICE_STATUS_LABEL[inv.status]}
+                  </span>
+                  <select
+                    value={inv.status}
+                    onChange={(e) => handleStatus(inv.id, e.target.value as InvoiceStatus)}
+                    className="bg-surface-container-high border-none rounded-lg px-2 py-1.5 font-label text-xs text-on-surface focus:ring-1 focus:ring-primary outline-none"
+                  >
+                    {Object.entries(INVOICE_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
                 </div>
-              </div>
-              <div className="font-syne font-black text-base" style={{ color: STATUS_COLOR[inv.status] }}>
-                {inv.amount.toFixed(2)} {inv.currency}
-              </div>
-              <select
-                value={inv.status}
-                onChange={(e) => handleStatus(inv.id, e.target.value as InvoiceStatus)}
-                className="bg-[#0d0d13] border border-border rounded-lg px-2 py-1 font-mono text-xs text-white focus:outline-none"
-              >
-                {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </div>
-          ))}
+              );
+            })
+          )}
         </div>
       )}
     </div>

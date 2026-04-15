@@ -12,6 +12,13 @@ const MUSCLE_PT: Record<string, string> = {
 
 const WEEK_OPTIONS = [2, 4, 8, 12];
 
+const COLOR_MAP: Record<string, string> = {
+  chest: '#60a5fa', back: '#84d4d3', shoulders: '#fb923c', biceps: '#c084fc',
+  triceps: '#f97316', legs: '#34d399', glutes: '#f472b6', core: '#93c5fd',
+  hamstrings: '#10b981', quadriceps: '#facc15', calves: '#f87171', forearms: '#94a3b8',
+  trapezius: '#a78bfa',
+};
+
 interface MuscleCard { muscle: string; sets: number; pct: number }
 
 export default function MuscleVolumePage() {
@@ -25,28 +32,27 @@ export default function MuscleVolumePage() {
   const cards: MuscleCard[] = data?.cards ?? [];
   const maxSets = cards[0]?.sets ?? 1;
 
-  const COLOR_MAP: Record<string, string> = {
-    chest: '#42a5f5', back: '#c8f542', shoulders: '#f5a442', biceps: '#a855f7',
-    triceps: '#ff8c5a', legs: '#34d399', glutes: '#f472b6', core: '#60a5fa',
-    hamstrings: '#34d399', quadriceps: '#fbbf24', calves: '#fb7185', forearms: '#94a3b8',
-    trapezius: '#a78bfa',
-  };
-
   return (
     <div>
-      <h1 className="font-syne font-black text-2xl text-white mb-2">Volume Muscular</h1>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="mb-6">
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1">Análise</div>
+        <h1 className="font-[Manrope] font-black text-2xl text-white leading-tight">Volume Muscular</h1>
+        <p className="text-xs text-zinc-500 mt-1">Distribuição de séries por grupo</p>
+      </div>
 
-      {/* Week selector */}
+      {/* ── Week selector ────────────────────────────────────────────────────── */}
       <div className="flex gap-2 mb-6">
         {WEEK_OPTIONS.map((w) => (
           <button
             key={w}
             onClick={() => setWeeks(w)}
-            className={`font-mono text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+            className={`font-bold text-xs px-4 py-2 rounded-xl transition-colors ${
               weeks === w
-                ? 'border-accent bg-accent/10 text-accent'
-                : 'border-border text-muted hover:border-muted hover:text-white'
+                ? 'text-black'
+                : 'bg-zinc-900 border border-zinc-800/60 text-zinc-400 hover:text-white'
             }`}
+            style={weeks === w ? { background: '#c8f542' } : {}}
           >
             {w}sem
           </button>
@@ -54,36 +60,40 @@ export default function MuscleVolumePage() {
       </div>
 
       {isLoading ? (
-        <div className="py-20 font-mono text-sm text-muted text-center">A calcular...</div>
+        <div className="py-20 text-sm text-zinc-500 text-center">A calcular...</div>
       ) : !cards.length ? (
-        <div className="py-20 font-mono text-sm text-muted text-center">Sem dados para o período seleccionado.</div>
+        <div className="py-20 text-sm text-zinc-500 text-center">Sem dados para o período seleccionado.</div>
       ) : (
-        <>
-          {/* Muscle cards with progress bar */}
-          <div className="flex flex-col gap-3 mb-6">
-            {cards.map((c) => {
-              const color = COLOR_MAP[c.muscle] ?? '#888899';
-              const label = MUSCLE_PT[c.muscle] ?? c.muscle;
-              return (
-                <div key={c.muscle} className="bg-panel border border-border rounded-xl px-4 py-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-sans text-sm font-medium text-white">{label}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-syne font-black text-sm" style={{ color }}>{c.sets}</span>
-                      <span className="font-mono text-[10px] text-muted">séries</span>
-                    </div>
+        <div className="flex flex-col gap-3">
+          {cards.map((c, idx) => {
+            const color = COLOR_MAP[c.muscle] ?? '#84d4d3';
+            const label = MUSCLE_PT[c.muscle] ?? c.muscle;
+            const barW = (c.sets / maxSets) * 100;
+            return (
+              <div key={c.muscle} className="bg-zinc-900 rounded-2xl px-4 py-3.5 border border-zinc-800/60">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                    <span className="text-sm font-semibold text-white">{label}</span>
                   </div>
-                  <div className="h-1.5 bg-[#1e1e28] rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${(c.sets / maxSets) * 100}%`, background: color }}
-                    />
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-[Manrope] font-black text-base text-white">{c.sets}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">séries</span>
+                    {idx === 0 && (
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded-lg ml-1">Top</span>
+                    )}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </>
+                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${barW}%`, background: color }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

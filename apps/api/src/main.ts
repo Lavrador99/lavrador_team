@@ -1,27 +1,27 @@
-import { ValidationPipe } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
-import { NestExpressApplication } from "@nestjs/platform-express";
-import * as cookieParser from "cookie-parser";
-import { join } from "path";
-import * as fs from "fs";
-import { AppModule } from "./app.module";
+import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import cookieParser from 'cookie-parser';
+import * as fs from 'fs';
+import { join } from 'path';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Ensure uploads directory exists
-  const uploadsDir = join(process.cwd(), "uploads", "exercises");
+  const uploadsDir = join(process.cwd(), 'uploads', 'exercises');
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
   // Serve uploaded files as static assets at /uploads/*
-  app.useStaticAssets(join(process.cwd(), "uploads"), { prefix: "/uploads" });
+  app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
 
-  app.setGlobalPrefix("api");
+  app.setGlobalPrefix('api');
 
   // Health check — used by Docker healthcheck
   const httpAdapter = app.getHttpAdapter();
-  httpAdapter.get("/api/health", (_req: any, res: any) => {
-    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  httpAdapter.get('/api/health', (_req: any, res: any) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
   app.use(cookieParser());
@@ -31,12 +31,12 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-    }),
+    })
   );
 
   const allowedOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
-    : ["http://localhost:4501", "http://localhost:4502"];
+    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+    : ['http://localhost:4501', 'http://localhost:4502'];
 
   app.enableCors({
     origin: allowedOrigins,

@@ -189,6 +189,9 @@ export class StatsService {
       flags: a.flags,
     }));
 
+    // Read pre-calculated metrics when available (updated after each workout log)
+    const metrics = await this.prisma.clientMetrics.findUnique({ where: { clientId } });
+
     return {
       clientId,
       clientName: client?.name ?? "—",
@@ -202,8 +205,10 @@ export class StatsService {
       activeProgram,
       assessmentHistory,
       sessionHistory,
-      totalWorkoutLogs: workoutLogs.length > 0 ? await this.prisma.workoutLog.count({ where: { clientId } }) : 0,
-      workoutStreak: calcStreak(workoutLogs.map((l) => l.date)),
+      totalWorkoutLogs: metrics?.totalWorkouts ?? (workoutLogs.length > 0 ? await this.prisma.workoutLog.count({ where: { clientId } }) : 0),
+      workoutStreak: metrics?.workoutStreak ?? calcStreak(workoutLogs.map((l) => l.date)),
+      totalVolumeKg: metrics?.totalVolumeKg ?? 0,
+      lastWorkoutDate: metrics?.lastWorkoutDate?.toISOString() ?? null,
       recentWorkoutLogs: workoutLogs.slice(0, 5).map((l) => ({
         id: l.id,
         date: l.date.toISOString(),

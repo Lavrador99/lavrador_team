@@ -2,27 +2,41 @@
 import { useState } from 'react';
 import { WorkoutBlock, BlockType } from '@libs/types';
 import { useWorkoutEditorStore } from '../../../../lib/stores/workoutEditorStore';
-import { exercisesApi } from '../../../../lib/api/exercises.api';
 
-const BLOCK_COLORS: Record<BlockType, string> = {
-  WARMUP: '#42a5f5', SEQUENTIAL: '#c8f542', SUPERSET: '#a855f7',
-  CIRCUIT: '#ff8c5a', TABATA: '#ff3b3b', CARDIO: '#06b6d4', FLEXIBILITY: '#10b981',
+// ─── Block type metadata ──────────────────────────────────────────────────────
+
+const BLOCK_META: Record<BlockType, { color: string; bg: string; label: string; icon: string }> = {
+  WARMUP:      { color: '#2196f3', bg: '#e3f2fd', label: 'Aquecimento',   icon: 'local_fire_department' },
+  SEQUENTIAL:  { color: '#005050', bg: '#e0f4f4', label: 'Sequencial',    icon: 'format_list_numbered' },
+  SUPERSET:    { color: '#7c3aed', bg: '#f3e8ff', label: 'Superset',      icon: 'bolt' },
+  CIRCUIT:     { color: '#ea580c', bg: '#fff3e0', label: 'Circuito',      icon: 'loop' },
+  TABATA:      { color: '#dc2626', bg: '#fef2f2', label: 'Tabata / HIIT', icon: 'timer' },
+  CARDIO:      { color: '#0891b2', bg: '#ecfeff', label: 'Cardio',        icon: 'directions_run' },
+  FLEXIBILITY: { color: '#059669', bg: '#f0fdf4', label: 'Flexibilidade', icon: 'self_improvement' },
 };
-const BLOCK_LABELS: Record<BlockType, string> = {
-  WARMUP: 'Aquecimento', SEQUENTIAL: 'Sequencial', SUPERSET: 'Superset',
-  CIRCUIT: 'Circuito', TABATA: 'Tabata / HIIT', CARDIO: 'Cardio', FLEXIBILITY: 'Flexibilidade',
-};
+
 const CARDIO_METHODS = [
   { value: 'CONTINUO_EXTENSIVO', label: 'Contínuo Extensivo' },
   { value: 'CONTINUO_INTENSIVO', label: 'Contínuo Intensivo' },
-  { value: 'CONTINUO_VARIAVEL', label: 'Contínuo Variável (Fartlek)' },
-  { value: 'INTERVALADO', label: 'Intervalado' },
-  { value: 'HIIT', label: 'HIIT' },
-  { value: 'FARTLEK', label: 'Fartlek' },
+  { value: 'CONTINUO_VARIAVEL',  label: 'Contínuo Variável (Fartlek)' },
+  { value: 'INTERVALADO',        label: 'Intervalado' },
+  { value: 'HIIT',               label: 'HIIT' },
+  { value: 'FARTLEK',            label: 'Fartlek' },
 ];
 
-const inp = 'bg-[#18181f] border border-[#2a2a35] rounded px-2 py-1.5 text-sm text-white outline-none focus:border-accent w-full placeholder-faint';
-const smInp = 'bg-[#111118] border border-[#2a2a35] rounded px-2 py-1 text-xs text-white outline-none focus:border-accent w-18 placeholder-faint';
+// Superset/Circuit use A1,A2... ; others use 1,2,3
+function exLabel(blockType: BlockType, idx: number): string | null {
+  if (['SUPERSET', 'CIRCUIT'].includes(blockType)) return `A${idx + 1}`;
+  if (blockType === 'SEQUENTIAL') return `${idx + 1}`;
+  return null;
+}
+
+// Shared input styles
+const cellInp = (w = 'w-16') =>
+  `bg-surface-container-low border border-outline-variant rounded-lg px-2 py-1.5 text-xs text-on-surface outline-none focus:border-primary transition-colors text-center ${w}`;
+const labelCls = 'text-[9px] font-bold uppercase tracking-widest text-on-surface-variant mb-0.5 block';
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
   block: WorkoutBlock;
@@ -33,28 +47,22 @@ interface Props {
   onDrop: () => void;
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function BlockCard({ block, index, isDragging, onDragStart, onDragOver, onDrop }: Props) {
   const {
     updateBlock, removeBlock, addExercise, removeExercise, updateExercise,
     bulkSelectionActive, selectedExerciseIds, toggleExerciseSelection,
   } = useWorkoutEditorStore();
+
   const [collapsed, setCollapsed] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [searchResults, setSearchResults] = useState<{ id: string; name: string; primaryMuscles: string[] }[]>([]);
-  const [searching, setSearching] = useState(false);
 
-  const color = BLOCK_COLORS[block.type];
+  const meta    = BLOCK_META[block.type];
+  const isSuperset = ['SUPERSET', 'CIRCUIT'].includes(block.type);
 
-  const runSearch = async (text: string) => {
-    setSearchText(text);
-    if (!text.trim()) { setSearchResults([]); return; }
-    setSearching(true);
-    try {
-      const res = await exercisesApi.getAll({ search: text });
-      setSearchResults(res.slice(0, 8));
-    } finally { setSearching(false); }
-  };
+  const tabataTotal = block.tabata
+    ? block.tabata.rounds * (block.tabata.workSeconds + block.tabata.restSeconds)
+    : 0;
 
   const updateTabata = (changes: object) => {
     const t = { ...block.tabata!, ...changes };
@@ -62,221 +70,318 @@ export function BlockCard({ block, index, isDragging, onDragStart, onDragOver, o
     updateBlock(block.id, { tabata: t });
   };
 
-  const tabataTotal = block.tabata ? block.tabata.rounds * (block.tabata.workSeconds + block.tabata.restSeconds) : 0;
-
   return (
     <div
-      className="mb-3 rounded-xl overflow-hidden transition-opacity"
+      className="mb-4 bg-white rounded-2xl overflow-hidden transition-all duration-150 shadow-ambient"
       style={{
-        border: `1px solid ${color}33`,
-        borderLeft: `3px solid ${color}`,
-        background: '#111118',
-        opacity: isDragging ? 0.5 : 1,
+        borderLeft: `4px solid ${meta.color}`,
+        opacity: isDragging ? 0.45 : 1,
+        border: `1px solid ${meta.color}22`,
+        borderLeftWidth: '4px',
+        borderLeftColor: meta.color,
       }}
       draggable
       onDragStart={() => onDragStart(index)}
       onDragOver={(e) => { e.preventDefault(); onDragOver(index); }}
       onDrop={onDrop}
     >
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e1e28]">
-        <span className="text-faint cursor-grab text-base select-none">⠿</span>
-        <span className="font-mono text-[9px] px-2 py-0.5 rounded border flex-shrink-0 tracking-widest"
-          style={{ color, background: color + '18', borderColor: color + '33' }}>
-          {BLOCK_LABELS[block.type]}
-        </span>
+
+      {/* ── Block header ─────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 px-4 py-3.5" style={{ background: meta.bg + '80' }}>
+
+        {/* Drag handle */}
+        <span className="text-outline cursor-grab select-none text-base flex-shrink-0">⠿</span>
+
+        {/* Block number + type badge */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span
+            className="text-[9px] font-black uppercase tracking-[0.18em] px-2 py-1 rounded-lg"
+            style={{ color: meta.color, background: meta.bg }}
+          >
+            Block {String(index + 1).padStart(2, '0')}
+          </span>
+          <span className="text-[9px] font-black uppercase tracking-[0.18em] px-2 py-1 rounded-lg flex items-center gap-1"
+            style={{ color: meta.color, background: meta.bg }}>
+            <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>{meta.icon}</span>
+            {meta.label}
+            {isSuperset && block.exercises.length > 0 && (
+              <span className="ml-0.5 opacity-70">
+                ({block.exercises.map((_, i) => `A${i + 1}`).join('/')})
+              </span>
+            )}
+          </span>
+        </div>
+
+        {/* Block name */}
         <input
           value={block.label ?? ''}
           onChange={(e) => updateBlock(block.id, { label: e.target.value })}
-          placeholder="Nome do bloco..."
-          className="flex-1 bg-transparent border-b border-[#2a2a35] text-white font-syne text-sm font-semibold px-1 py-0.5 outline-none focus:border-accent placeholder-faint"
+          placeholder={`Nome do bloco...`}
+          className="flex-1 bg-transparent border-none text-on-surface font-headline font-semibold text-sm outline-none placeholder-outline min-w-0"
         />
-        <button onClick={() => setCollapsed(!collapsed)} className="text-muted text-sm hover:text-white">{collapsed ? '▾' : '▴'}</button>
-        <button onClick={() => removeBlock(block.id)} className="text-faint text-xs hover:text-red-400 ml-1">✕</button>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button onClick={() => setCollapsed(!collapsed)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/60 text-on-surface-variant transition-colors">
+            <span className="material-symbols-outlined text-base">{collapsed ? 'expand_more' : 'expand_less'}</span>
+          </button>
+          <button onClick={() => removeBlock(block.id)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-outline hover:text-error transition-colors">
+            <span className="material-symbols-outlined text-base">close</span>
+          </button>
+        </div>
       </div>
 
+      {/* ── Body ─────────────────────────────────────────────────────────── */}
       {!collapsed && (
-        <div className="p-4">
-          {/* TABATA config */}
+        <div className="px-5 py-4">
+
+          {/* ── TABATA config ─────────────────────────────────────────────── */}
           {block.type === 'TABATA' && block.tabata && (
-            <div className="bg-red-400/6 border border-red-400/15 rounded-lg p-3 mb-4 flex flex-wrap items-end gap-3">
+            <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-4 flex flex-wrap items-end gap-4">
               {[
-                { label: 'Trabalho (s)', val: block.tabata.workSeconds, key: 'workSeconds', def: 20 },
-                { label: 'Repouso (s)', val: block.tabata.restSeconds, key: 'restSeconds', def: 10 },
-                { label: 'Rounds', val: block.tabata.rounds, key: 'rounds', def: 8 },
-              ].map(({ label, val, key, def }) => (
+                { label: 'Trabalho (s)', val: block.tabata.workSeconds, key: 'workSeconds' },
+                { label: 'Repouso (s)', val: block.tabata.restSeconds, key: 'restSeconds' },
+                { label: 'Rounds',      val: block.tabata.rounds,      key: 'rounds' },
+              ].map(({ label, val, key }) => (
                 <div key={key}>
-                  <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-1">{label}</p>
-                  <input type="number" value={val} min={1} onChange={(e) => updateTabata({ [key]: parseInt(e.target.value) || def })} className={inp + ' w-20'} />
+                  <label className={labelCls}>{label}</label>
+                  <input type="number" value={val} min={1}
+                    onChange={(e) => updateTabata({ [key]: parseInt(e.target.value) || 1 })}
+                    className={cellInp('w-20')} />
                 </div>
               ))}
-              <span className="font-mono text-sm text-red-400 font-bold self-end pb-1">
-                ⏱ {Math.floor(tabataTotal / 60)}:{String(tabataTotal % 60).padStart(2, '0')} min
-              </span>
+              <div className="ml-auto self-end">
+                <span className="font-headline font-black text-base text-red-600">
+                  ⏱ {Math.floor(tabataTotal / 60)}:{String(tabataTotal % 60).padStart(2, '0')} min
+                </span>
+              </div>
             </div>
           )}
 
-          {/* CARDIO config */}
+          {/* ── CARDIO config ─────────────────────────────────────────────── */}
           {block.type === 'CARDIO' && (
-            <div className="bg-cyan-400/6 border border-cyan-400/15 rounded-lg p-3 mb-4 grid grid-cols-2 gap-3">
+            <div className="bg-cyan-50 border border-cyan-100 rounded-xl p-4 mb-4 grid grid-cols-2 gap-4">
               <div>
-                <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-1">Método</p>
+                <label className={labelCls}>Método</label>
                 <select value={block.cardioMethod ?? 'CONTINUO_EXTENSIVO'}
                   onChange={(e) => updateBlock(block.id, { cardioMethod: e.target.value as any })}
-                  className={inp + ' text-xs'} style={{ background: '#18181f' }}>
+                  className="w-full bg-white border border-outline-variant rounded-lg px-2 py-1.5 text-xs text-on-surface outline-none focus:border-primary">
                   {CARDIO_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
               </div>
               <div>
-                <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-1">Duração (min)</p>
-                <input type="number" value={block.cardioDurationMin ?? 20} min={5} max={180}
-                  onChange={(e) => updateBlock(block.id, { cardioDurationMin: parseInt(e.target.value) || 20 })} className={inp} />
+                <label className={labelCls}>Duração (min)</label>
+                <input type="number" value={block.cardioDurationMin ?? 20} min={5}
+                  onChange={(e) => updateBlock(block.id, { cardioDurationMin: parseInt(e.target.value) || 20 })}
+                  className={cellInp('w-full')} />
               </div>
               <div>
-                <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-1">Zona FC baixa (bpm)</p>
-                <input type="number" value={block.cardioZoneLow ?? ''} placeholder="ex: 130"
-                  onChange={(e) => updateBlock(block.id, { cardioZoneLow: parseInt(e.target.value) || undefined })} className={inp} />
+                <label className={labelCls}>FC baixa (bpm)</label>
+                <input type="number" value={block.cardioZoneLow ?? ''} placeholder="130"
+                  onChange={(e) => updateBlock(block.id, { cardioZoneLow: parseInt(e.target.value) || undefined })}
+                  className={cellInp('w-full')} />
               </div>
               <div>
-                <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-1">Zona FC alta (bpm)</p>
-                <input type="number" value={block.cardioZoneHigh ?? ''} placeholder="ex: 155"
-                  onChange={(e) => updateBlock(block.id, { cardioZoneHigh: parseInt(e.target.value) || undefined })} className={inp} />
+                <label className={labelCls}>FC alta (bpm)</label>
+                <input type="number" value={block.cardioZoneHigh ?? ''} placeholder="155"
+                  onChange={(e) => updateBlock(block.id, { cardioZoneHigh: parseInt(e.target.value) || undefined })}
+                  className={cellInp('w-full')} />
               </div>
             </div>
           )}
 
-          {/* FLEXIBILITY config */}
+          {/* ── WARMUP / FLEXIBILITY config ───────────────────────────────── */}
           {(block.type === 'FLEXIBILITY' || block.type === 'WARMUP') && (
-            <div className="bg-emerald-400/6 border border-emerald-400/15 rounded-lg p-3 mb-4 grid grid-cols-3 gap-3">
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-4 flex flex-wrap items-end gap-4">
               <div>
-                <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-1">Método</p>
+                <label className={labelCls}>Método</label>
                 <select value={block.stretchMethod ?? 'ESTATICO'}
                   onChange={(e) => updateBlock(block.id, { stretchMethod: e.target.value as any })}
-                  className={inp + ' text-xs'} style={{ background: '#18181f' }}>
+                  className="bg-white border border-outline-variant rounded-lg px-2 py-1.5 text-xs text-on-surface outline-none focus:border-primary">
                   <option value="ESTATICO">Estático (10–30s)</option>
                   <option value="BALISTICO">Balístico (dinâmico)</option>
                   <option value="PNF">PNF (6s + 20s)</option>
                 </select>
               </div>
               <div>
-                <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-1">Hold (s)</p>
+                <label className={labelCls}>Hold (s)</label>
                 <input type="number" value={block.holdSeconds ?? 20}
-                  onChange={(e) => updateBlock(block.id, { holdSeconds: parseInt(e.target.value) || 20 })} className={inp} />
+                  onChange={(e) => updateBlock(block.id, { holdSeconds: parseInt(e.target.value) || 20 })}
+                  className={cellInp()} />
               </div>
               {block.stretchMethod === 'PNF' && (
                 <div>
-                  <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-1">Contração (s)</p>
+                  <label className={labelCls}>Contração (s)</label>
                   <input type="number" value={block.contractionSeconds ?? 6}
-                    onChange={(e) => updateBlock(block.id, { contractionSeconds: parseInt(e.target.value) || 6 })} className={inp} />
+                    onChange={(e) => updateBlock(block.id, { contractionSeconds: parseInt(e.target.value) || 6 })}
+                    className={cellInp()} />
                 </div>
               )}
+              <div>
+                <label className={labelCls}>Duração (min)</label>
+                <input type="number" value={block.cardioDurationMin ?? 10} min={1}
+                  onChange={(e) => updateBlock(block.id, { cardioDurationMin: parseInt(e.target.value) || 10 })}
+                  className={cellInp()} />
+              </div>
             </div>
           )}
 
-          {/* Rest settings */}
+          {/* ── Rest settings ─────────────────────────────────────────────── */}
           {!['TABATA', 'CARDIO'].includes(block.type) && (
             <div className="flex gap-4 mb-4">
-              <div className="flex-1">
-                <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-1">Repouso entre séries (s)</p>
-                <input type="number" value={block.restBetweenSets} min={0} max={600}
-                  onChange={(e) => updateBlock(block.id, { restBetweenSets: parseInt(e.target.value) || 0 })} className={inp} />
+              <div>
+                <label className={labelCls}>Descanso entre séries (s)</label>
+                <input type="number" value={block.restBetweenSets} min={0}
+                  onChange={(e) => updateBlock(block.id, { restBetweenSets: parseInt(e.target.value) || 0 })}
+                  className={cellInp('w-24')} />
               </div>
-              <div className="flex-1">
-                <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-1">Repouso após bloco (s)</p>
-                <input type="number" value={block.restAfterBlock} min={0} max={600}
-                  onChange={(e) => updateBlock(block.id, { restAfterBlock: parseInt(e.target.value) || 0 })} className={inp} />
+              <div>
+                <label className={labelCls}>Descanso após bloco (s)</label>
+                <input type="number" value={block.restAfterBlock} min={0}
+                  onChange={(e) => updateBlock(block.id, { restAfterBlock: parseInt(e.target.value) || 0 })}
+                  className={cellInp('w-24')} />
               </div>
             </div>
           )}
 
-          {/* Exercises */}
+          {/* ── Exercise table ────────────────────────────────────────────── */}
           {block.type !== 'CARDIO' && (
             <>
-              <div className="flex flex-col gap-2 mb-3">
-                {block.exercises.map((ex) => (
-                  <div key={ex.id}
-                    className={`bg-[#18181f] border rounded-lg p-3 flex gap-2 items-start transition-colors ${
-                      bulkSelectionActive && selectedExerciseIds.has(ex.id)
-                        ? 'border-accent/50 bg-accent/5'
-                        : 'border-[#2a2a35]'
-                    }`}>
-                    {bulkSelectionActive ? (
-                      <button
-                        onClick={() => toggleExerciseSelection(ex.id)}
-                        className={`w-5 h-5 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center text-xs transition-colors ${
-                          selectedExerciseIds.has(ex.id)
-                            ? 'bg-accent border-accent text-dark font-black'
-                            : 'border-[#444] text-transparent'
+              {block.exercises.length > 0 && (
+                <div className="mb-3 rounded-xl overflow-hidden border border-outline-variant">
+                  {block.exercises.map((ex, exIdx) => {
+                    const label = exLabel(block.type, exIdx);
+                    const isSelected = bulkSelectionActive && selectedExerciseIds.has(ex.id);
+                    return (
+                      <div
+                        key={ex.id}
+                        className={`border-b border-outline-variant last:border-0 transition-colors ${
+                          isSelected ? 'bg-primary/4' : 'hover:bg-surface-container-low/30'
                         }`}
-                      >✓</button>
-                    ) : (
-                      <span className="text-[#2a2a35] cursor-grab text-sm pt-1 select-none">⠿</span>
-                    )}
-                    <div className="flex-1">
-                      <input
-                        value={ex.exerciseName}
-                        onChange={(e) => updateExercise(block.id, ex.id, { exerciseName: e.target.value })}
-                        placeholder="Nome do exercício..."
-                        className="w-full bg-transparent border-b border-[#2a2a35] text-white text-sm font-medium pb-1 mb-2 outline-none focus:border-accent placeholder-faint"
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { label: 'Séries', type: 'number', val: ex.sets, onChange: (v: string) => updateExercise(block.id, ex.id, { sets: parseInt(v) || 1 }), placeholder: '3', w: 'w-16' },
-                          { label: 'Reps / Tempo', type: 'text', val: ex.reps, onChange: (v: string) => updateExercise(block.id, ex.id, { reps: v }), placeholder: '8-12', w: 'w-24' },
-                          { label: 'Carga (kg)', type: 'number', val: ex.load ?? '', onChange: (v: string) => updateExercise(block.id, ex.id, { load: parseFloat(v) || undefined }), placeholder: '—', w: 'w-20' },
-                          { label: '% 1RM', type: 'number', val: ex.percentRM ?? '', onChange: (v: string) => updateExercise(block.id, ex.id, { percentRM: parseInt(v) || undefined }), placeholder: '—', w: 'w-16' },
-                          { label: 'RIR', type: 'number', val: ex.rir ?? '', onChange: (v: string) => updateExercise(block.id, ex.id, { rir: parseInt(v) || undefined }), placeholder: '—', w: 'w-14' },
-                          { label: 'Tempo exec.', type: 'text', val: ex.tempoExecution ?? '', onChange: (v: string) => updateExercise(block.id, ex.id, { tempoExecution: v || undefined }), placeholder: '2:1:2:0', w: 'w-24' },
-                          ...(!['SUPERSET', 'CIRCUIT'].includes(block.type) ? [{ label: 'Repouso (s)', type: 'number', val: ex.restAfterSet ?? '', onChange: (v: string) => updateExercise(block.id, ex.id, { restAfterSet: parseInt(v) || 0 }), placeholder: '90', w: 'w-20' }] : []),
-                        ].map(({ label, type, val, onChange, placeholder, w }) => (
-                          <div key={label}>
-                            <p className="font-mono text-[9px] text-faint uppercase tracking-widest mb-0.5">{label}</p>
-                            <input type={type} value={val as string} onChange={(e) => onChange(e.target.value)}
-                              placeholder={placeholder} className={`${smInp} ${w}`} />
+                      >
+                        {/* ── Row A: label + name + actions ───────────────── */}
+                        <div className="flex items-center gap-3 px-4 pt-3 pb-1.5">
+                          {/* Label (A1/A2 / 1/2 / checkbox) */}
+                          {bulkSelectionActive ? (
+                            <button onClick={() => toggleExerciseSelection(ex.id)}
+                              className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center text-xs transition-colors ${
+                                isSelected ? 'bg-primary border-primary text-white' : 'border-outline-variant'
+                              }`}>{isSelected ? '✓' : ''}</button>
+                          ) : label ? (
+                            <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded flex-shrink-0"
+                              style={{ color: meta.color, background: meta.bg }}>
+                              {label}
+                            </span>
+                          ) : null}
+
+                          {/* Exercise name */}
+                          <div className="flex-1 min-w-0">
+                            <input
+                              value={ex.exerciseName}
+                              onChange={(e) => updateExercise(block.id, ex.id, { exerciseName: e.target.value })}
+                              placeholder="Nome do exercício..."
+                              className="w-full bg-transparent text-sm font-semibold text-on-surface outline-none placeholder-outline"
+                            />
+                            {ex.notes !== undefined && (
+                              <input
+                                value={ex.notes ?? ''}
+                                onChange={(e) => updateExercise(block.id, ex.id, { notes: e.target.value })}
+                                placeholder="Focus / notas..."
+                                className="w-full bg-transparent text-[11px] text-on-surface-variant italic outline-none placeholder-outline mt-0.5"
+                              />
+                            )}
                           </div>
-                        ))}
+
+                          {/* Action icons */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => updateExercise(block.id, ex.id, { notes: ex.notes !== undefined ? undefined : '' })}
+                              className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${ex.notes !== undefined ? 'text-primary' : 'text-outline hover:text-on-surface-variant'}`}
+                              title="Notas"
+                            >
+                              <span className="material-symbols-outlined text-base">edit_note</span>
+                            </button>
+                            <button onClick={() => removeExercise(block.id, ex.id)}
+                              className="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-error transition-colors">
+                              <span className="material-symbols-outlined text-base">delete_outline</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* ── Row B: primary inputs ────────────────────────── */}
+                        <div className="flex flex-wrap items-end gap-3 px-4 pb-1.5">
+                          {/* Séries × Reps */}
+                          <div>
+                            <label className={labelCls}>Séries × Reps</label>
+                            <div className="flex items-center gap-0">
+                              <input type="number" value={ex.sets} min={1}
+                                onChange={(e) => updateExercise(block.id, ex.id, { sets: parseInt(e.target.value) || 1 })}
+                                className="w-10 bg-surface-container-low border border-outline-variant rounded-l-lg px-2 py-1.5 text-xs text-on-surface outline-none focus:border-primary text-center" />
+                              <span className="text-[10px] text-on-surface-variant bg-surface-container-low border-y border-outline-variant px-1.5 py-1.5 leading-none select-none">×</span>
+                              <input type="text" value={ex.reps ?? ''} placeholder="6-8"
+                                onChange={(e) => updateExercise(block.id, ex.id, { reps: e.target.value })}
+                                className="w-14 bg-surface-container-low border border-outline-variant rounded-r-lg px-2 py-1.5 text-xs text-on-surface outline-none focus:border-primary text-center" />
+                            </div>
+                          </div>
+
+                          {/* Carga */}
+                          <div>
+                            <label className={labelCls}>Carga (kg)</label>
+                            <input type="number" value={ex.load ?? ''} placeholder="—"
+                              onChange={(e) => updateExercise(block.id, ex.id, { load: parseFloat(e.target.value) || undefined })}
+                              className={cellInp('w-20')} step={0.5} />
+                          </div>
+
+                          {/* Descanso — per exercise (hidden for SUPERSET/CIRCUIT which use block-level) */}
+                          {!isSuperset && (
+                            <div>
+                              <label className={labelCls}>Desc. (s)</label>
+                              <input type="number" value={ex.restAfterSet ?? ''} placeholder="90"
+                                onChange={(e) => updateExercise(block.id, ex.id, { restAfterSet: parseInt(e.target.value) || undefined })}
+                                className={cellInp('w-20')} />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* ── Row C: secondary inputs ──────────────────────── */}
+                        <div className="flex flex-wrap items-end gap-3 px-4 pb-3">
+                          {/* Tempo */}
+                          <div>
+                            <label className={labelCls}>Tempo Exec.</label>
+                            <input type="text" value={ex.tempoExecution ?? ''} placeholder="2-1-2-0"
+                              onChange={(e) => updateExercise(block.id, ex.id, { tempoExecution: e.target.value || undefined })}
+                              className={cellInp('w-24')} />
+                          </div>
+
+                          {/* RIR */}
+                          <div>
+                            <label className={labelCls}>RIR</label>
+                            <input type="number" value={ex.rir ?? ''} placeholder="—"
+                              onChange={(e) => updateExercise(block.id, ex.id, { rir: parseInt(e.target.value) || undefined })}
+                              className={cellInp('w-16')} min={0} max={10} />
+                          </div>
+
+                          {/* %1RM */}
+                          <div>
+                            <label className={labelCls}>%1RM</label>
+                            <input type="number" value={ex.percentRM ?? ''} placeholder="—"
+                              onChange={(e) => updateExercise(block.id, ex.id, { percentRM: parseInt(e.target.value) || undefined })}
+                              className={cellInp('w-16')} min={0} max={100} />
+                          </div>
+                        </div>
                       </div>
-                      {ex.notes !== undefined && (
-                        <input value={ex.notes ?? ''} onChange={(e) => updateExercise(block.id, ex.id, { notes: e.target.value })}
-                          placeholder="Notas técnicas..." className="mt-2 w-full bg-transparent border-b border-dashed border-[#2a2a35] text-muted text-xs pb-1 outline-none focus:border-muted placeholder-faint" />
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1 flex-shrink-0">
-                      <button onClick={() => updateExercise(block.id, ex.id, { notes: ex.notes !== undefined ? undefined : '' })}
-                        className={`text-sm ${ex.notes !== undefined ? 'text-accent' : 'text-faint'} hover:text-accent`}>✎</button>
-                      <button onClick={() => removeExercise(block.id, ex.id)} className="text-faint text-xs hover:text-red-400">✕</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
 
-              {/* Add exercise */}
-              <div className="flex gap-2 flex-wrap">
-                <button onClick={() => addExercise(block.id)}
-                  className="font-mono text-xs bg-accent/8 border border-accent/20 text-accent px-3 py-1.5 rounded-lg hover:bg-accent/12 transition-colors">
-                  + Exercício manual
-                </button>
-                <button onClick={() => setShowSearch(!showSearch)}
-                  className="font-mono text-xs border border-border text-muted px-3 py-1.5 rounded-lg hover:border-blue-400 hover:text-blue-400 transition-colors">
-                  🔍 Pesquisar base
-                </button>
-              </div>
-
-              {showSearch && (
-                <div className="mt-3 bg-[#0d0d13] border border-border rounded-xl p-3">
-                  <input value={searchText} onChange={(e) => runSearch(e.target.value)}
-                    placeholder="Pesquisar exercício..." className="w-full bg-[#18181f] border border-border rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-accent mb-2 placeholder-faint" />
-                  <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
-                    {searching && <p className="font-mono text-xs text-muted py-2">A pesquisar...</p>}
-                    {!searching && searchResults.length === 0 && searchText && <p className="font-mono text-xs text-muted py-2">Sem resultados</p>}
-                    {searchResults.map((ex) => (
-                      <button key={ex.id} onClick={() => { addExercise(block.id, { exerciseId: ex.id, exerciseName: ex.name }); setShowSearch(false); setSearchText(''); setSearchResults([]); }}
-                        className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-accent/6 transition-colors text-left">
-                        <span className="font-sans text-sm text-white">{ex.name}</span>
-                        <span className="font-mono text-[10px] text-muted">{ex.primaryMuscles.slice(0, 2).join(', ')}</span>
-                      </button>
-                    ))}
-                  </div>
+              {/* Hint when no exercises yet */}
+              {block.exercises.length === 0 && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-outline-variant text-on-surface-variant text-xs">
+                  <span className="material-symbols-outlined text-base">arrow_forward</span>
+                  Seleciona um exercício no painel direito para adicionar a este bloco.
                 </div>
               )}
             </>

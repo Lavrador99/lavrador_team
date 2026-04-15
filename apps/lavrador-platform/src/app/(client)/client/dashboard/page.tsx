@@ -1,140 +1,178 @@
 'use client';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
-import { formatDistanceToNow } from 'date-fns';
-import { pt } from 'date-fns/locale';
 import { statsApi } from '../../../../lib/api/stats.api';
 import { sessionsApi } from '../../../../lib/api/clients.api';
 import { ClientStats, SessionDto } from '@libs/types';
 import { useEffect, useState } from 'react';
 
-const SESSION_TYPE_LABEL: Record<string, string> = {
-  TRAINING: 'Treino', ASSESSMENT: 'Avaliação', FOLLOWUP: 'Acompanhamento',
-};
-const SESSION_STATUS_COLOR: Record<string, string> = {
-  SCHEDULED: '#42a5f5', COMPLETED: '#c8f542', CANCELLED: '#ff3b3b', NO_SHOW: '#ff8c5a',
-};
+const MOTIVATIONAL = [
+  'Cada repetição conta.',
+  'Consistência bate intensidade.',
+  'O progresso é inevitável.',
+  'Mais forte do que ontem.',
+];
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
+function getTodayLabel() {
+  return new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+// ─── Micro components ─────────────────────────────────────────────────────────
+
+function StatPill({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div className="flex-1 bg-zinc-900 rounded-2xl px-4 py-3.5 border border-zinc-800/60">
+      <div className="font-black text-2xl text-white font-[Manrope]">{value}</div>
+      <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-3">{children}</h2>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientDashboardPage() {
   const router = useRouter();
-  const { data: stats, isLoading: loadingStats } = useSWR<ClientStats>('my-stats', statsApi.getMy);
+  const { data: stats, isLoading } = useSWR<ClientStats>('my-stats', statsApi.getMy);
   const [upcomingSessions, setUpcomingSessions] = useState<SessionDto[]>([]);
-  const [loadingSessions, setLoadingSessions] = useState(true);
+  const quote = MOTIVATIONAL[new Date().getDay() % MOTIVATIONAL.length];
 
   useEffect(() => {
     if (!stats?.clientId) return;
     sessionsApi.getUpcoming(stats.clientId)
       .then(setUpcomingSessions)
-      .catch(() => {})
-      .finally(() => setLoadingSessions(false));
+      .catch(() => {});
   }, [stats?.clientId]);
 
-  const kpis = [
-    { label: 'Treinos registados', val: stats?.totalWorkoutLogs ?? '—', color: '#c8f542' },
-    {
-      label: 'Streak actual',
-      val: stats?.workoutStreak != null ? `${stats.workoutStreak} ${stats.workoutStreak === 1 ? 'dia' : 'dias'}` : '—',
-      color: '#f5a442',
-    },
-  ];
+  const nextSession = upcomingSessions[0];
+  const clientName = stats?.clientName?.split(' ')[0] ?? 'Atleta';
 
   return (
-    <div>
-      {/* Quick action */}
-      <button
-        onClick={() => router.push('/client/my-plan')}
-        className="w-full flex items-center gap-4 bg-accent/[0.06] border border-accent/20 rounded-xl px-5 py-4 mb-5 hover:bg-accent/10 hover:border-accent/40 transition-all text-left"
-      >
-        <span className="text-2xl text-accent">▦</span>
-        <div>
-          <div className="font-syne font-bold text-sm text-white">Ver o meu plano de treino</div>
-          <div className="font-mono text-[10px] text-accent mt-0.5 tracking-wide">Inicia o treino de hoje →</div>
-        </div>
-      </button>
+    <div className="pb-4">
 
-      {/* KPI grid */}
-      <div className="grid grid-cols-2 gap-3 mb-5">
-        {kpis.map(({ label, val, color }) => (
-          <div
-            key={label}
-            className="bg-panel border border-border rounded-xl p-4"
-            style={{ borderTopColor: color, borderTopWidth: 2 }}
-          >
-            <div className="font-syne font-black text-2xl" style={{ color }}>
-              {loadingStats ? '—' : val}
-            </div>
-            <div className="font-mono text-[10px] text-muted tracking-widest uppercase mt-1">{label}</div>
-          </div>
-        ))}
+      {/* ── Greeting ──────────────────────────────────────────────────────── */}
+      <div className="mb-6 pt-2">
+        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1">{getTodayLabel()}</div>
+        <h1 className="font-[Manrope] font-black text-3xl text-white leading-tight">
+          {getGreeting()},<br />{clientName}.
+        </h1>
       </div>
 
-      {/* Active program */}
-      {stats?.activeProgram && (
-        <div className="bg-panel border border-border rounded-xl p-4 mb-5">
-          <div className="font-mono text-[10px] text-muted tracking-widest uppercase mb-1">Plano activo</div>
-          <div className="font-syne font-bold text-base text-white">{stats.activeProgram}</div>
+      {/* ── Start Workout hero ────────────────────────────────────────────── */}
+      <button
+        onClick={() => router.push('/client/my-plan')}
+        className="w-full relative overflow-hidden rounded-2xl mb-5 text-left active:scale-[0.98] transition-transform"
+        style={{ background: 'linear-gradient(135deg, #005050 0%, #003535 100%)' }}
+      >
+        <div className="relative z-10 px-5 py-5">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#84d4d3] mb-2">Treino de hoje</div>
+          <div className="font-[Manrope] font-black text-xl text-white mb-1">
+            {stats?.activeProgram ?? 'O teu plano'}
+          </div>
+          <div className="text-xs text-teal-200/70 mb-4">{quote}</div>
+          <div className="inline-flex items-center gap-2 bg-[#c8f542] text-black font-bold text-xs px-4 py-2.5 rounded-xl">
+            <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
+            Iniciar treino
+          </div>
+        </div>
+        {/* Decorative circles */}
+        <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10" style={{ background: '#84d4d3', transform: 'translate(30%, -30%)' }} />
+        <div className="absolute bottom-0 right-8 w-20 h-20 rounded-full opacity-10" style={{ background: '#c8f542', transform: 'translateY(40%)' }} />
+      </button>
+
+      {/* ── Stats row ─────────────────────────────────────────────────────── */}
+      <div className="flex gap-3 mb-6">
+        <StatPill
+          value={isLoading ? '—' : stats?.totalWorkoutLogs ?? 0}
+          label="Treinos"
+        />
+        <StatPill
+          value={isLoading ? '—' : stats?.workoutStreak != null ? `${stats.workoutStreak}d` : '—'}
+          label="Streak"
+        />
+        <StatPill
+          value={isLoading ? '—' : `${stats?.attendanceRate ?? 0}%`}
+          label="Presença"
+        />
+      </div>
+
+      {/* ── Next session ──────────────────────────────────────────────────── */}
+      {nextSession && (
+        <div className="mb-6">
+          <SectionTitle>Próxima sessão</SectionTitle>
+          <div className="bg-zinc-900 rounded-2xl px-4 py-4 border border-zinc-800/60 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-[#005050]/30 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-[#84d4d3] text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-white capitalize">
+                {new Date(nextSession.scheduledAt).toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'short' })}
+              </div>
+              <div className="text-xs text-zinc-400 mt-0.5">
+                {new Date(nextSession.scheduledAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                {' · '}{nextSession.duration} min
+                {nextSession.notes && ` · ${nextSession.notes}`}
+              </div>
+            </div>
+            <div className="flex-shrink-0 text-xs font-bold text-[#84d4d3] bg-[#005050]/20 px-2.5 py-1 rounded-lg">
+              {nextSession.type === 'TRAINING' ? 'Treino' : nextSession.type === 'ASSESSMENT' ? 'Avaliação' : 'Acompanham.'}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Recent workout logs */}
+      {/* ── Recent logs ───────────────────────────────────────────────────── */}
       {stats?.recentWorkoutLogs && stats.recentWorkoutLogs.length > 0 && (
-        <>
-          <h2 className="font-syne font-bold text-sm text-white mb-3">Treinos recentes</h2>
-          <div className="flex flex-col gap-2 mb-6">
-            {stats.recentWorkoutLogs.map((log) => (
-              <div key={log.id} className="flex items-center gap-3 bg-panel border border-border rounded-lg px-3.5 py-2.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+        <div className="mb-6">
+          <SectionTitle>Histórico recente</SectionTitle>
+          <div className="flex flex-col gap-2">
+            {stats.recentWorkoutLogs.slice(0, 4).map((log) => (
+              <div key={log.id} className="flex items-center gap-3 bg-zinc-900 rounded-xl px-4 py-3 border border-zinc-800/60">
+                <div className="w-2 h-2 rounded-full bg-[#84d4d3] flex-shrink-0" />
                 <div className="flex-1">
-                  <div className="font-sans text-xs text-white capitalize">
-                    {new Date(log.date).toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long' })}
+                  <div className="text-sm text-white capitalize">
+                    {new Date(log.date).toLocaleDateString('pt-PT', { weekday: 'short', day: '2-digit', month: 'short' })}
                   </div>
-                  {log.durationMin && (
-                    <div className="font-mono text-[10px] text-faint mt-0.5">{log.durationMin} min</div>
-                  )}
                 </div>
-                <div className="font-mono text-[10px] text-muted flex-shrink-0">
-                  {formatDistanceToNow(new Date(log.date), { addSuffix: true, locale: pt })}
-                </div>
+                {log.durationMin && (
+                  <div className="text-xs text-zinc-400">{log.durationMin} min</div>
+                )}
               </div>
             ))}
           </div>
-        </>
-      )}
-
-      {/* Upcoming sessions */}
-      <h2 className="font-syne font-bold text-sm text-white mb-3">Próximas sessões</h2>
-      {loadingSessions || loadingStats ? (
-        <div className="font-mono text-xs text-faint py-4">A carregar...</div>
-      ) : upcomingSessions.length === 0 ? (
-        <div className="font-mono text-xs text-faint py-4">Sem sessões agendadas.</div>
-      ) : (
-        <div className="flex flex-col gap-2 mb-6">
-          {upcomingSessions.slice(0, 5).map((s) => (
-            <div key={s.id} className="flex items-start gap-3 bg-panel border border-border rounded-xl px-4 py-3.5">
-              <div
-                className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-                style={{ background: SESSION_STATUS_COLOR[s.status] ?? '#444' }}
-              />
-              <div className="flex-1">
-                <div className="font-syne font-bold text-sm text-white mb-0.5">
-                  {SESSION_TYPE_LABEL[s.type] ?? s.type}
-                </div>
-                <div className="font-mono text-[11px] text-muted capitalize">
-                  {new Date(s.scheduledAt).toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long' })}
-                  {' · '}
-                  {new Date(s.scheduledAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
-                  {' · '}
-                  {s.duration} min
-                </div>
-                {s.notes && <div className="font-mono text-[10px] text-faint mt-1">{s.notes}</div>}
-              </div>
-              <div className="font-mono text-[10px] text-[#42a5f5] flex-shrink-0 text-right">
-                {formatDistanceToNow(new Date(s.scheduledAt), { addSuffix: true, locale: pt })}
-              </div>
-            </div>
-          ))}
         </div>
       )}
+
+      {/* ── Quick links ───────────────────────────────────────────────────── */}
+      <div className="mb-6">
+        <SectionTitle>Acesso rápido</SectionTitle>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { href: '/client/my-records', icon: 'emoji_events', label: 'Records pessoais', color: 'text-yellow-400' },
+            { href: '/client/habits',     icon: 'task_alt',      label: 'Hábitos diários',  color: 'text-[#84d4d3]' },
+            { href: '/client/stats',      icon: 'insights',      label: 'Analytics',         color: 'text-purple-400' },
+            { href: '/client/my-nutrition', icon: 'restaurant',  label: 'Nutrição',           color: 'text-orange-400' },
+          ].map(({ href, icon, label, color }) => (
+            <button key={href} onClick={() => router.push(href)}
+              className="bg-zinc-900 rounded-2xl px-4 py-4 border border-zinc-800/60 text-left flex items-center gap-3 active:scale-95 transition-transform">
+              <span className={`material-symbols-outlined text-xl ${color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+              <span className="text-sm text-white font-medium">{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
     </div>
   );

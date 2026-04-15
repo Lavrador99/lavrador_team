@@ -101,9 +101,9 @@ export interface ExerciseDto {
 
 export interface AssessmentData {
   // Pessoal
-  nome: string;
+  nome?: string;
   idade: number;
-  sexo: "M" | "F";
+  sexo?: "M" | "F";
   profissao: string;
 
   // Clínicos

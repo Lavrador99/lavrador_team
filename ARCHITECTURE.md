@@ -1,6 +1,6 @@
 # Lavrador Team — Documentação Técnica Completa
 
-> Última actualização: Abril 2026
+> Última actualização: Abril 2026 — Sprint 1-3 implementados
 
 ---
 
@@ -421,6 +421,18 @@ Mensagens entre PT e cliente.
 | `content` | String | Texto da mensagem |
 | `read` | Boolean | Lida pelo destinatário |
 
+#### `MealPlanSnapshot` _(novo — Sprint 3.3)_
+Historial imutável de versões de planos nutricionais. Criado automaticamente antes de cada `updateMeal()`.
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | String (cuid) | PK |
+| `planId` | String | FK → MealPlan |
+| `snapshot` | Json | Cópia completa do plano (com days + meals) no momento |
+| `createdAt` | DateTime | Timestamp da versão |
+
+Index: `@@index([clientId, scheduledAt])` adicionado ao modelo `Session` para as queries de churn risk.
+
 ---
 
 ## 4. API — NestJS Backend
@@ -546,11 +558,12 @@ O refresh token é enviado como `httpOnly` cookie (`refresh_token`), não expost
 
 | Método | Endpoint | Acesso | Descrição |
 |--------|----------|--------|-----------|
-| GET | `/stats/dashboard` | ADMIN | KPIs do dashboard (clientes, programas, sessões, taxa) |
+| GET | `/stats/dashboard` | ADMIN | KPIs do dashboard — **resposta cacheada 1h (Redis)** |
 | GET | `/stats/my` | CLIENT | Estatísticas pessoais |
 | GET | `/stats/client/:id` | ADMIN | Estatísticas de cliente específico |
 | GET | `/stats/sessions` | ADMIN | Distribuição de sessões (por tipo/status/dia/hora) |
 | GET | `/stats/clients/activity` | ADMIN | Actividade dos clientes |
+| GET | `/stats/churn-risk` | ADMIN | Clientes com quebra de aderência >30% (últimas 3 semanas vs anteriores) |
 
 ---
 
@@ -621,8 +634,10 @@ Os recordes são também **detectados automaticamente** ao registar um treino (`
 | DELETE | `/nutrition/plans/:id` | ADMIN | Eliminar plano |
 | POST | `/nutrition/plans/:planId/days/:dayOfWeek` | ADMIN | Criar/actualizar dia do plano |
 | POST | `/nutrition/days/:dayId/meals` | ADMIN | Adicionar refeição |
-| PUT | `/nutrition/meals/:mealId` | ADMIN | Actualizar refeição |
+| PUT | `/nutrition/meals/:mealId` | ADMIN | Actualizar refeição — **cria snapshot automático** |
 | DELETE | `/nutrition/meals/:mealId` | ADMIN | Eliminar refeição |
+| GET | `/nutrition/plans/:id/snapshots` | ADMIN | Listar versões anteriores do plano |
+| GET | `/nutrition/snapshots/:snapshotId` | ADMIN | Restaurar/ver versão específica |
 
 ---
 
@@ -654,32 +669,55 @@ Este módulo implementa as directrizes ACSM 2026 e um sistema de aprendizagem da
 ```json
 {
   "clientId": "...",
+  "assessmentId": "...",
   "level": "INTERMEDIO",
   "objective": "HIPERTROFIA",
-  "flags": ["dor_joelho"],
-  "equipment": ["BARRA", "HALTERES"],
+  "flags": ["hipertensao", "joelho"],
+  "equipment": [],
   "pattern": "DOMINANTE_JOELHO"
 }
 ```
 
+> **`assessmentId`** (opcional): se presente, activa verificação de zonas Karvonen e warnings de %RM para perfis sedentários.
+> **`equipment: []`**: se vazio, faz fallback automático para `assessment.data.equipamento` do cliente.
+
 **Resposta:**
 ```json
 {
-  "prescription": { /* ACSM 2026 parameters */ },
+  "prescription": {
+    "sets": { "min": 3, "max": 6 },
+    "reps": { "min": 6, "max": 12 },
+    "rpeMaxCap": 7,
+    "..."
+  },
   "suggestions": [ /* scored exercises */ ],
   "correctiveExercises": [ /* ~20% of suggestions */ ],
-  "warnings": [ /* clinical warnings */ ],
-  "systemStatus": { "learningActive": true, "workoutsLogged": 15 }
+  "warnings": [
+    "Evitar Valsalva (press acima da cabeça). Cap RPE ≤7.",
+    "Limite de esforço clínico: RPE ≤7 (flag de risco cardiovascular).",
+    "Karvonen: perfil sedentário — manter %RM ≤60 nas primeiras 4 semanas."
+  ],
+  "systemStatus": { "learningActive": true, "currentWorkouts": 15 }
 }
 ```
 
+**Flags clínicas suportadas:**
+
+| Flag | Evitar | Priorizar |
+|------|--------|-----------|
+| `evitar_lombar` | `DOMINANTE_ANCA` | `CORE` |
+| `evitar_joelho` / `joelho` | `DOMINANTE_JOELHO` | `DOMINANTE_ANCA` |
+| `evitar_ombro` | `EMPURRAR_VERTICAL` | `PUXAR_HORIZONTAL` |
+| `hipertensao` / `HIPERTENSAO` | `EMPURRAR_VERTICAL` | `LOCOMOCAO` |
+| `sedentario` | — | `CORE`, `LOCOMOCAO` |
+
 **Como funciona o sistema de aprendizagem:**
 1. Começa com score neutro (1.0) para todos os exercícios
-2. Activa após 10 treinos registados pelo cliente (`THRESHOLD_WORKOUTS = 10`)
-3. `timesUsed++` quando PT escolhe um exercício
-4. `timesRejected++` quando PT substitui um exercício
-5. `score = (timesUsed + 1) / (timesUsed + timesRejected + 2)` — Laplace smoothing
-6. Exercícios corretivos (clínicos) representam ~20% das sugestões
+2. Activa após 10 treinos registados (`THRESHOLD_WORKOUTS = 10`)
+3. `timesUsed++` quando PT escolhe; `timesRejected++` quando substitui
+4. Ao registar substituição X → Y, Y recebe `+0.5` em **todos os outros objectivos** do mesmo level (sinal global parcial)
+5. Exercícios corretivos (clínicos) representam ~20% das sugestões
+6. `rpeMaxCap` injetado automaticamente para flags `hipertensao`/`CONTRAINDICADO`
 
 ---
 
@@ -792,6 +830,7 @@ Este módulo implementa as directrizes ACSM 2026 e um sistema de aprendizagem da
   - **Todos os outros:** restBetweenSets, restAfterBlock
 - Por exercício: nome (com pesquisa), sets, reps, carga, %RM, RIR, tempo de execução, notas
 - Preview de duração em tempo real (debounce 800ms → `POST /workouts/duration-preview`)
+- **Bulk Edit** (Sprint 3.2): botão "⊡ Selecionar" activa modo multi-select; barra fixa inferior permite aplicar sets/reps/repouso a todos os exercícios seleccionados
 - Guardar como template
 - Guardar treino → redirect para lista
 
@@ -872,10 +911,13 @@ Este módulo implementa as directrizes ACSM 2026 e um sistema de aprendizagem da
 **Dados:** `workoutsApi.getById(workoutId)` — guardado no Dexie.js (IndexedDB) para offline
 **Funcionalidades:**
 - Visualizar todos os blocos e exercícios do treino
-- Registar séries (peso, reps, RPE, concluída)
-- Offline-first: regista em IndexedDB se sem ligação, sincroniza quando volta online
-- Feedback háptico: `navigator.vibrate(50)` ao concluir série
-- Submeter log → `workoutsApi.createLog()`
+- Registar séries (peso, reps, RPE, tipo: Normal/Warmup/Drop/Failure)
+- **Screen Wake Lock** (Sprint 1.1): `navigator.wakeLock.request('screen')` durante o timer de descanso — ecrã não bloqueia; re-adquirido em `visibilitychange`
+- **Banner de pendentes** (Sprint 1.2): `"offline · N pendentes"` — contagem em tempo real via `getPendingCount()` Dexie
+- Offline-first: regista em IndexedDB se sem ligação, sincroniza automaticamente quando volta online
+- Feedback háptico: `navigator.vibrate(50)` ao concluir série, `[100,50,100]` no fim do descanso
+- Submeter log → `workoutsApi.createLog()` — auto-detecta PRs (Epley 1RM)
+- **Validação Zod** no backend antes de persistir (Sprint 2.4): 400 se `entries` inválidas
 
 ---
 
@@ -1031,13 +1073,20 @@ Bottom navigation bar do cliente (fixa no fundo do ecrã).
   clientId: string,
   isDirty: boolean,
   saving: boolean,
-  durationPreview: number | null,
+  durationPreview: { totalMin: number; warning?: string } | null,
   error: string | null,
+  // Bulk selection (Sprint 3.2):
+  bulkSelectionActive: boolean,
+  selectedExerciseIds: Set<string>,
   // Actions:
   initNew, loadWorkout, setName, setDayLabel,
   addBlock, removeBlock, updateBlock, reorderBlocks,
   addExercise, removeExercise, updateExercise,
-  setDurationPreview, setSaving, setError, markClean
+  setDurationPreview, setSaving, setError, markClean,
+  // Bulk actions:
+  toggleBulkSelection, toggleExerciseSelection,
+  setAllSelected, clearSelection,
+  bulkUpdateExercises(ids: Set<string>, changes: Partial<BlockExercise>)
 }
 ```
 
@@ -1191,6 +1240,8 @@ PORT=3333
 CORS_ORIGIN="http://localhost:3000"
 RAPIDAPI_KEY="..."         # ExerciseDB API (sync de GIFs)
 RESEND_API_KEY="DISABLED"  # Email (Resend.com)
+REDIS_HOST="localhost"     # Cache + rate limiting (Sprint 3.1)
+REDIS_PORT="6379"
 
 # apps/lavrador-platform/.env.local
 NEXT_PUBLIC_API_URL="http://localhost:3333/api"
@@ -1234,4 +1285,37 @@ yarn test           # Jest em todos os projetos
 
 ---
 
-*Documento gerado automaticamente a partir da análise do código-fonte. Para actualizações contactar o repositório principal.*
+---
+
+## 9. Funcionalidades Implementadas (Sprint 1–3)
+
+### Sprint 1 — Experiência do Cliente
+| # | Feature | Ficheiros-chave |
+|---|---------|----------------|
+| 1.1 | Screen Wake Lock no logger | `log/[workoutId]/page.tsx` |
+| 1.2 | Banner "N pendentes" (Dexie count) | `workoutDb.ts`, `log/[workoutId]/page.tsx` |
+| 1.3 | PWA (manifest + service worker) | `next.config.js`, `public/manifest.json` |
+| 1.4 | Regras clínicas: `joelho` + `hipertensao.avoid EMPURRAR_VERTICAL` | `acsm-guidelines.engine.ts` |
+| 1.5 | Equipamento automático via assessment | `suggestion.service.ts` |
+
+### Sprint 2 — Motor de Prescrição
+| # | Feature | Ficheiros-chave |
+|---|---------|----------------|
+| 2.1 | RPE cap clínico + Karvonen warnings | `acsm-guidelines.engine.ts`, `suggestion.service.ts` |
+| 2.2 | Substituição global por level (+0.5 nos outros objectivos) | `suggestion.repository.ts` |
+| 2.3 | Churn risk detection (`GET /stats/churn-risk`) | `stats.service.ts`, `stats.controller.ts` |
+| 2.4 | Validação Zod para `blocks[]` e `entries[]` | `workout.schemas.ts`, `workouts.service.ts` |
+| 2.5 | Phase-based defaults (sets/rest da fase do programa) | `acsm-guidelines.engine.ts`, `workouts.service.ts` |
+
+### Sprint 3 — Infraestrutura
+| # | Feature | Ficheiros-chave |
+|---|---------|----------------|
+| 3.1 | Redis cache (stats 1h) + ThrottlerGuard (5 req/min auth) | `app.module.ts`, `auth.controller.ts`, `stats.service.ts` |
+| 3.2 | Bulk Edit no editor (multi-select + aplicar a todos) | `workoutEditorStore.ts`, `BlockCard.tsx`, `WorkoutEditorClient.tsx` |
+| 3.3 | Versionamento nutricional (`MealPlanSnapshot`) | `schema.prisma`, `nutrition.service.ts`, `nutrition.controller.ts` |
+
+> **Pendente:** correr `yarn db:migrate` quando o Docker estiver activo para aplicar `MealPlanSnapshot` e o index `@@index([clientId, scheduledAt])` na tabela `sessions`.
+
+---
+
+*Documento gerado automaticamente a partir da análise do código-fonte. Última actualização: Abril 2026.*

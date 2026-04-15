@@ -2,6 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Client app: system light/dark theme tokens ─────────────────────────── */
+:root {
+  --client-bg:          #0a0a0f;
+  --client-bg-card:     #111118;
+  --client-border:      rgba(255,255,255,0.06);
+  --client-text:        #ffffff;
+  --client-text-muted:  #a1a1aa;  /* zinc-400 */
+  --client-text-dim:    #71717a;  /* zinc-500 */
+  --client-accent:      #84d4d3;
+  --client-accent-dark: #005050;
+  --client-tab-bg:      rgba(9,9,15,0.95);
+  --client-tab-border:  rgba(255,255,255,0.06);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --client-bg:          #f4f6f6;
+    --client-bg-card:     #ffffff;
+    --client-border:      rgba(0,0,0,0.08);
+    --client-text:        #0d1717;
+    --client-text-muted:  #3d5050;
+    --client-text-dim:    #6b7f7f;
+    --client-accent:      #006868;
+    --client-accent-dark: #004040;
+    --client-tab-bg:      rgba(244,246,246,0.95);
+    --client-tab-border:  rgba(0,0,0,0.08);
+  }
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -14,50 +43,74 @@
   }
 
   body {
-    background-color: #0a0a0f;
-    color: #e8e8f0;
-    font-family: 'DM Sans', sans-serif;
+    background-color: #f8fafa;
+    color: #191c1d;
+    font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Refined scrollbar — tonal, not black */
   ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #111118;
+    background: #f2f4f4;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #1e1e28;
-    border-radius: 2px;
+    background: #bec9c8;
+    border-radius: 10px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #2e2e38;
+    background: #6e7979;
+  }
+
+  /* Selection tinted with primary-fixed */
+  ::selection {
+    background: #a0f0f0;
+    color: #002020;
   }
 }
 
 @layer utilities {
-  .font-syne {
-    font-family: 'Syne', sans-serif;
+  /* Kinetic gradient — signature primary button texture */
+  .kinetic-gradient {
+    background: linear-gradient(135deg, #005050 0%, #006a6a 100%);
   }
 
-  .font-mono-dm {
-    font-family: 'DM Mono', monospace;
+  /* Progress blade — full-width top accent bar */
+  .progress-blade {
+    height: 4px;
+    background: linear-gradient(90deg, #61f9e9 0%, #005050 100%);
   }
 
-  .text-accent {
-    color: #c8f542;
+  /* Glass nav — for floating overlays and mobile nav */
+  .glass-nav {
+    background: rgba(248, 250, 250, 0.8);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
   }
 
-  .bg-accent {
-    background-color: #c8f542;
+  /* Category label — ALL CAPS + tracking per editorial spec */
+  .label-category {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #3e4948;
   }
 
-  .border-accent {
-    border-color: #c8f542;
+  /* Material Symbols icon font settings */
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .material-symbols-filled {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   }
 }

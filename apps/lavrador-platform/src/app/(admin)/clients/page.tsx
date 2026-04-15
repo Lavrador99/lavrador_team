@@ -1,9 +1,9 @@
 'use client';
-import useSWR from 'swr';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { clientsApi } from '../../../lib/api/clients.api';
+import { useRouter } from 'next/navigation';
 import { UserDto } from '@libs/types';
+import { PageHeader, EmptyState, LoadingState } from '../../../components/ui';
+import { useClients } from '../../../lib/hooks/useClients';
 
 function getAge(birthDate: string) {
   return Math.floor((Date.now() - new Date(birthDate).getTime()) / (365.25 * 24 * 3600 * 1000));
@@ -12,7 +12,7 @@ function getAge(birthDate: string) {
 export default function ClientsPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
-  const { data: clients = [], isLoading } = useSWR<UserDto[]>('clients-all', clientsApi.getAll);
+  const { data: clients = [], isLoading } = useClients();
 
   const filtered = clients.filter(
     (c) =>
@@ -20,67 +20,79 @@ export default function ClientsPage() {
       c.email.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const headerAction = (
+    <>
+      <button
+        onClick={() => router.push('/users/new')}
+        className="bg-surface-container-high text-on-surface font-label font-bold text-xs px-4 py-2.5 rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-2"
+      >
+        <span className="material-symbols-outlined text-base">person_add</span>
+        Novo Cliente
+      </button>
+      <button
+        onClick={() => router.push('/prescription')}
+        className="kinetic-gradient text-on-primary font-headline font-bold text-sm px-5 py-2.5 rounded-lg shadow-ambient flex items-center gap-2 active:scale-95 transition-all"
+      >
+        <span className="material-symbols-outlined text-base">description</span>
+        Nova Prescrição
+      </button>
+    </>
+  );
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-syne font-black text-2xl text-white">Clientes</h1>
-          <p className="font-mono text-xs text-muted mt-1">// {clients.length} clientes registados</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => router.push('/users/new')}
-            className="font-mono text-xs border border-border text-muted hover:text-white hover:border-muted px-3 py-2 rounded-lg transition-colors">
-            + Novo Cliente
-          </button>
-          <button onClick={() => router.push('/prescription')}
-            className="bg-accent text-dark font-syne font-black text-sm px-4 py-2 rounded-lg hover:bg-accent/90">
-            + Nova Prescrição
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        label="Gestão"
+        title="Clientes"
+        subtitle={`${clients.length} clientes registados`}
+        action={headerAction}
+      />
 
-      <div className="mb-5">
+      <div className="mb-6 relative max-w-sm">
+        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Pesquisar cliente..."
-          className="w-full max-w-sm bg-panel border border-border rounded-lg px-3 py-2 text-sm text-white font-sans placeholder-faint focus:outline-none focus:border-accent"
+          className="w-full bg-surface-container-highest border-none rounded-lg pl-10 pr-4 py-3 text-sm text-on-surface placeholder:text-outline focus:ring-1 focus:ring-primary focus:bg-surface-container-lowest transition-all outline-none"
         />
       </div>
 
       {isLoading ? (
-        <div className="py-20 font-mono text-sm text-muted text-center">A carregar clientes...</div>
+        <LoadingState message="A carregar clientes..." />
       ) : filtered.length === 0 ? (
-        <div className="py-20 font-mono text-sm text-muted text-center">Nenhum cliente encontrado.</div>
+        <EmptyState icon="person_search" title="Nenhum cliente encontrado." />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((c) => {
+          {filtered.map((c: UserDto) => {
             const clientId = c.client?.id;
             return (
               <button
                 key={c.id}
                 onClick={() => clientId && router.push(`/clients/${clientId}`)}
-                className="bg-panel border border-border rounded-xl p-5 text-left hover:border-accent/30 transition-colors flex items-center gap-4"
+                className="bg-surface-container-lowest rounded-xl p-5 text-left shadow-sm hover:shadow-ambient transition-shadow flex items-center gap-4 group"
               >
-                <div className="w-10 h-10 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center font-syne font-black text-accent text-lg flex-shrink-0">
+                <div className="w-11 h-11 rounded-full kinetic-gradient flex items-center justify-center font-headline font-black text-on-primary text-lg flex-shrink-0">
                   {(c.client?.name ?? c.email)[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-syne font-bold text-sm text-white truncate">{c.client?.name ?? '—'}</div>
-                  <div className="font-mono text-[10px] text-muted mt-0.5 truncate">{c.email}</div>
-                  <div className="flex gap-2 mt-1.5">
-                    <span className="font-mono text-[9px] text-faint bg-[#1e1e28] rounded px-1.5 py-0.5">
+                  <div className="font-headline font-bold text-sm text-on-surface truncate">{c.client?.name ?? '—'}</div>
+                  <div className="font-label text-xs text-secondary mt-0.5 truncate">{c.email}</div>
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    <span className="label-category bg-surface-container-high rounded px-1.5 py-0.5">
                       {new Date(c.createdAt).toLocaleDateString('pt-PT')}
                     </span>
                     {c.client?.birthDate && (
-                      <span className="font-mono text-[9px] text-accent bg-accent/5 border border-accent/15 rounded px-1.5 py-0.5">
+                      <span className="label-category text-primary bg-primary-fixed rounded px-1.5 py-0.5">
                         {getAge(c.client.birthDate)} anos
                       </span>
                     )}
                   </div>
                 </div>
-                <span className="text-muted text-base flex-shrink-0">→</span>
+                <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors flex-shrink-0">
+                  chevron_right
+                </span>
               </button>
             );
           })}

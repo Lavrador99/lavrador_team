@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from "@nestjs/common";
 import { WorkoutStatus } from "../../../../../../libs/types/src/index";
 import { WorkoutsRepository } from "../repositories/workouts.repository";
@@ -162,9 +163,22 @@ export class WorkoutsService {
     return calcWorkoutDuration(blocks);
   }
 
+  // ─── Resolve userId (JWT sub) → Client.id ────────────────────────────
+  async resolveClientId(userId: string): Promise<string> {
+    const client = await this.prisma.client.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!client) throw new UnprocessableEntityException('Perfil de cliente não encontrado para este utilizador');
+    return client.id;
+  }
+
   // ─── Logs ──────────────────────────────────────────────────────────────
-  async createLog(dto: CreateWorkoutLogDto, clientId: string) {
+  async createLog(dto: CreateWorkoutLogDto, userId: string) {
     await this.findById(dto.workoutId);
+
+    // userId (JWT sub) → Client.id (FK in WorkoutLog)
+    const clientId = await this.resolveClientId(userId);
 
     const entriesResult = workoutLogEntriesSchema.safeParse(dto.entries);
     if (!entriesResult.success) {
@@ -183,6 +197,9 @@ export class WorkoutsService {
 
     // Auto-detect PRs (best 1RM per exercise in this log)
     this.detectAndSavePersonalRecords(clientId, dto.entries).catch(() => {});
+
+    // Recalculate and persist client metrics
+    this.recalculateClientMetrics(clientId).catch(() => {});
 
     return log;
   }
@@ -226,6 +243,46 @@ export class WorkoutsService {
         });
       }
     }
+  }
+
+  private async recalculateClientMetrics(clientId: string) {
+    const logs = await this.prisma.workoutLog.findMany({
+      where: { clientId },
+      select: { date: true, entries: true },
+      orderBy: { date: 'desc' },
+    });
+
+    const totalWorkouts = logs.length;
+    const lastWorkoutDate = logs[0]?.date ?? null;
+
+    // Streak: count consecutive unique days going backwards from today
+    const daySet = new Set(logs.map((l) => l.date.toISOString().split('T')[0]));
+    let streak = 0;
+    const cur = new Date();
+    cur.setHours(0, 0, 0, 0);
+    while (true) {
+      const key = cur.toISOString().split('T')[0];
+      if (daySet.has(key)) { streak++; cur.setDate(cur.getDate() - 1); } else break;
+    }
+
+    // Total volume: sum of load × reps for all completed sets
+    let totalVolumeKg = 0;
+    for (const log of logs) {
+      const entries = Array.isArray(log.entries) ? log.entries as any[] : [];
+      for (const entry of entries) {
+        for (const set of entry.sets ?? []) {
+          if (set.completed && set.load && set.reps) {
+            totalVolumeKg += (Number(set.load) || 0) * (Number(set.reps) || 0);
+          }
+        }
+      }
+    }
+
+    await this.prisma.clientMetrics.upsert({
+      where: { clientId },
+      update: { totalWorkouts, workoutStreak: streak, lastWorkoutDate, totalVolumeKg },
+      create: { clientId, totalWorkouts, workoutStreak: streak, lastWorkoutDate, totalVolumeKg },
+    });
   }
 
   async getLogsByWorkout(workoutId: string) {

@@ -170,6 +170,7 @@ model Client {
   habits          Habit[]
   progressPhotos  ProgressPhoto[]
   mealPlans       MealPlan[]
+  metrics         ClientMetrics?
 
   @@map("clients")
 }
@@ -351,6 +352,7 @@ model Session {
   client  Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   program Program? @relation(fields: [programId], references: [id])
 
+  @@index([clientId, scheduledAt])
   @@map("sessions")
 }
 
@@ -427,6 +429,24 @@ model PersonalRecord {
   client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@map("personal_records")
+}
+
+// ─────────────────────────────────────────
+// CLIENT METRICS (pre-calculated after each workout)
+// ─────────────────────────────────────────
+
+model ClientMetrics {
+  id              String    @id @default(cuid())
+  clientId        String    @unique
+  totalWorkouts   Int       @default(0)
+  workoutStreak   Int       @default(0)
+  lastWorkoutDate DateTime?
+  totalVolumeKg   Float     @default(0)
+  updatedAt       DateTime  @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_metrics")
 }
 
 // ─────────────────────────────────────────

@@ -6,6 +6,7 @@
     "declaration": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "esModuleInterop": true,
     "paths": {
       "@lavrador-team/types": ["../../libs/types/src/index.ts"],
       "@libs/types": ["../../libs/types/src/index.ts"]

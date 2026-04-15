@@ -107,8 +107,9 @@ export class WorkoutsController {
   }
 
   @Get("logs/my")
-  getMyLogs(@CurrentUser("sub") userId: string) {
-    return this.workoutsService.getLogsByClient(userId);
+  async getMyLogs(@CurrentUser("sub") userId: string) {
+    const clientId = await this.workoutsService.resolveClientId(userId);
+    return this.workoutsService.getLogsByClient(clientId);
   }
 
   // ─── Exercise history ─────────────────────────────────────────────────
@@ -124,11 +125,12 @@ export class WorkoutsController {
   }
 
   @Get("history/my/exercise/:exerciseId")
-  getMyExerciseHistory(
+  async getMyExerciseHistory(
     @Param("exerciseId") exerciseId: string,
     @CurrentUser("sub") userId: string,
   ) {
-    return this.workoutsService.getExerciseHistory(userId, exerciseId);
+    const clientId = await this.workoutsService.resolveClientId(userId);
+    return this.workoutsService.getExerciseHistory(clientId, exerciseId);
   }
 
   // ─── Calendar ─────────────────────────────────────────────────────────
@@ -141,8 +143,9 @@ export class WorkoutsController {
   }
 
   @Get("calendar/my")
-  getMyCalendar(@CurrentUser("sub") userId: string) {
-    return this.workoutsService.getCalendar(userId);
+  async getMyCalendar(@CurrentUser("sub") userId: string) {
+    const clientId = await this.workoutsService.resolveClientId(userId);
+    return this.workoutsService.getCalendar(clientId);
   }
 
   // ─── Muscle volume ────────────────────────────────────────────────────
@@ -158,10 +161,11 @@ export class WorkoutsController {
   }
 
   @Get("muscle-volume/my")
-  getMyMuscleVolume(
+  async getMyMuscleVolume(
     @CurrentUser("sub") userId: string,
     @Query("weeks") weeks?: string,
   ) {
-    return this.workoutsService.getMuscleVolume(userId, weeks ? Number(weeks) : 4);
+    const clientId = await this.workoutsService.resolveClientId(userId);
+    return this.workoutsService.getMuscleVolume(clientId, weeks ? Number(weeks) : 4);
   }
 }
