@@ -1,9 +1,11 @@
 'use client';
 import useSWR from 'swr';
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useRef } from 'react';
+import { useState, useRef, createElement } from 'react';
 import { clientsApi, sessionsApi } from '../../../../lib/api/clients.api';
-import { programsApi } from '../../../../lib/api/prescription.api';
+import { programsApi, assessmentsApi } from '../../../../lib/api/prescription.api';
+import { downloadPdf } from '../../../../lib/pdf/downloadPdf';
+import { AssessmentReportPdf } from '../../../../lib/pdf/AssessmentReportPdf';
 import { invoicesApi, InvoiceDto } from '../../../../lib/api/invoices.api';
 import { habitsApi } from '../../../../lib/api/habits.api';
 import { progressPhotosApi, ProgressPhoto } from '../../../../lib/api/progress-photos.api';
@@ -412,11 +414,30 @@ export default function ClientDetailPage() {
           ) : (
             stats?.assessmentHistory?.map((a) => (
               <div key={a.id} className="bg-surface-container-lowest rounded-xl px-5 py-4 shadow-sm">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className={`label-category px-2 py-0.5 rounded ${LEVEL_STYLE[a.level] ?? 'bg-surface-container text-secondary'}`}>{a.level}</span>
-                  <span className="font-label text-xs text-secondary">
-                    {new Date(a.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })}
-                  </span>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-3">
+                    <span className={`label-category px-2 py-0.5 rounded ${LEVEL_STYLE[a.level] ?? 'bg-surface-container text-secondary'}`}>{a.level}</span>
+                    <span className="font-label text-xs text-secondary">
+                      {new Date(a.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const full = await assessmentsApi.getById(a.id);
+                        const clientName = stats?.clientName ?? 'Cliente';
+                        await downloadPdf(
+                          `avaliacao-${clientName.replace(/\s+/g, '-').toLowerCase()}.pdf`,
+                          createElement(AssessmentReportPdf, { assessment: full, clientName }) as any,
+                        );
+                      } catch { /* ignore */ }
+                    }}
+                    className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white transition-colors"
+                    title="Exportar PDF"
+                  >
+                    <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                    PDF
+                  </button>
                 </div>
                 {a.flags?.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">

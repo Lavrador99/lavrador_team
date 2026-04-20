@@ -1,5 +1,6 @@
 import { ClientTabBar } from '../../components/layout/ClientTabBar';
 import { PendingLogsFlusher } from '../../components/PendingLogsFlusher';
+import { InstallPwaPrompt } from '../../components/InstallPwaPrompt';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,6 +10,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         {children}
       </main>
       <ClientTabBar />
+      <InstallPwaPrompt />
     </div>
   );
 }

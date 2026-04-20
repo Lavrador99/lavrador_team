@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { WorkoutDto } from '@libs/types';
 import { workoutsApi } from '../../../../lib/api/workouts.api';
+import { downloadPdf } from '../../../../lib/pdf/downloadPdf';
+import { WorkoutPlanPdf } from '../../../../lib/pdf/WorkoutPlanPdf';
+import { createElement } from 'react';
 
 const BLOCK_TYPE_LABELS: Record<string, string> = {
   WARMUP: 'Aquecimento', SEQUENTIAL: 'Sequencial', SUPERSET: 'Superset',
@@ -23,6 +26,17 @@ export default function MyPlanPage() {
   const router = useRouter();
   const { data: workouts = [], isLoading, error } = useSWR<WorkoutDto[]>('my-workouts', workoutsApi.getMy);
   const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExportPdf() {
+    if (!workouts.length || exporting) return;
+    setExporting(true);
+    try {
+      await downloadPdf('plano-treino.pdf', createElement(WorkoutPlanPdf, { workouts }) as any);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   function toggleBlock(blockId: string) {
     setExpandedBlocks((prev) => {
@@ -47,8 +61,20 @@ export default function MyPlanPage() {
     <div>
       <div className="mb-6">
         <span className="label-category text-primary">Treino</span>
-        <h1 className="font-headline font-extrabold text-2xl text-on-surface tracking-tight mt-1">O meu plano</h1>
-        <p className="text-sm text-secondary mt-1">{workouts.length} treino{workouts.length !== 1 ? 's' : ''}</p>
+        <div className="flex items-start justify-between gap-3 mt-1">
+          <div>
+            <h1 className="font-headline font-extrabold text-2xl text-on-surface tracking-tight">O meu plano</h1>
+            <p className="text-sm text-secondary mt-1">{workouts.length} treino{workouts.length !== 1 ? 's' : ''}</p>
+          </div>
+          <button
+            onClick={handleExportPdf}
+            disabled={exporting}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800/60 text-zinc-400 hover:text-white transition-colors disabled:opacity-50 flex-shrink-0 mt-1"
+          >
+            <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+            {exporting ? 'A gerar...' : 'PDF'}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-4">
