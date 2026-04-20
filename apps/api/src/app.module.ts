@@ -23,12 +23,17 @@ import { HabitsModule } from './modules/habits/habits.module';
 import { WorkoutTemplatesModule } from './modules/workout-templates/workout-templates.module';
 import { ProgressPhotosModule } from './modules/progress-photos/progress-photos.module';
 import { NutritionModule } from './modules/nutrition/nutrition.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 5 }]),
+    ThrottlerModule.forRoot([
+      { name: 'auth',    ttl: 60_000, limit: 5  },  // auth endpoints: 5 req/min
+      { name: 'default', ttl: 60_000, limit: 60 },  // default: 60 req/min
+      { name: 'heavy',   ttl: 60_000, limit: 20 },  // suggestion/stats: 20 req/min
+    ]),
     CacheModule.registerAsync({
       isGlobal: true,
       useFactory: () => ({
@@ -56,6 +61,7 @@ import { NutritionModule } from './modules/nutrition/nutrition.module';
     WorkoutTemplatesModule,
     ProgressPhotosModule,
     NutritionModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

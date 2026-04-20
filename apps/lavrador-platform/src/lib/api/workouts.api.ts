@@ -93,6 +93,17 @@ export const workoutsApi = {
     const { data } = await api.get(`/workouts/muscle-volume/my?weeks=${weeks}`);
     return data as { cards: { muscle: string; sets: number; pct: number }[]; weekly: ({ week: string } & Record<string, number | string>)[] };
   },
+
+  getLastLog: async (workoutId: string) => {
+    const { data } = await api.get(`/workouts/${workoutId}/last-log`);
+    return data as {
+      id: string;
+      date: string;
+      entries: { exerciseId?: string; exerciseName: string; sets: { setNumber: number; reps: number; load?: number; rpe?: number; completed: boolean }[] }[];
+      durationMin?: number;
+      rpe?: number;
+    } | null;
+  },
 };
 
 export const adminApi = {

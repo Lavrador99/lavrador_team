@@ -319,6 +319,115 @@ export class StatsService {
     };
   }
 
+  // ─── Insights acionáveis para o PT ──────────────────────────────────────
+  // Corre sem cache porque os dados são sensíveis ao momento presente.
+
+  async getPtInsights() {
+    const now = new Date();
+    const sevenDaysAgo  = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000);
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const endOfDay14   = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+    const [clients, allMetrics, expiringPrograms, upcomingSessions] = await Promise.all([
+      this.prisma.client.findMany({
+        select: {
+          id: true,
+          name: true,
+          metrics: { select: { lastWorkoutDate: true, workoutStreak: true } },
+        },
+      }),
+      this.prisma.clientMetrics.findMany({
+        select: { clientId: true, lastWorkoutDate: true, workoutStreak: true, totalWorkouts: true },
+      }),
+      // Programas activos cujos workouts terminam nos próximos 14 dias
+      this.prisma.program.findMany({
+        where: { status: 'ACTIVE' },
+        select: {
+          id: true,
+          name: true,
+          phases: true,
+          createdAt: true,
+          client: { select: { id: true, name: true } },
+        },
+        take: 100,
+      }),
+      // Sessões nas próximas 7 dias para calcular carga semanal
+      this.prisma.session.findMany({
+        where: { scheduledAt: { gte: now, lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) } },
+        select: { scheduledAt: true, clientId: true, type: true, status: true },
+        orderBy: { scheduledAt: 'asc' },
+      }),
+    ]);
+
+    const metricsMap = new Map(allMetrics.map((m) => [m.clientId, m]));
+
+    // ── Clientes sem treino há mais de 7 dias ─────────────────────────────
+    const inactiveClients = clients
+      .map((c) => {
+        const m = metricsMap.get(c.id);
+        const last = m?.lastWorkoutDate;
+        const daysSince = last
+          ? Math.floor((now.getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24))
+          : null;
+        return { clientId: c.id, name: c.name, lastWorkoutDate: last?.toISOString() ?? null, daysSince };
+      })
+      .filter((c) => c.daysSince === null || c.daysSince > 7)
+      .sort((a, b) => (b.daysSince ?? 9999) - (a.daysSince ?? 9999))
+      .slice(0, 10);
+
+    // ── Carga semanal: sessões por dia ────────────────────────────────────
+    const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const weekLoad: Record<string, number> = {};
+    for (const s of upcomingSessions) {
+      const day = DAY_LABELS[new Date(s.scheduledAt).getDay()];
+      weekLoad[day] = (weekLoad[day] ?? 0) + 1;
+    }
+    const weeklyLoad = DAY_LABELS.map((day) => ({ day, sessions: weekLoad[day] ?? 0 }));
+
+    // ── Programas a expirar em 14 dias ────────────────────────────────────
+    const expiring = expiringPrograms
+      .filter((p) => {
+        const phases = Array.isArray(p.phases) ? p.phases as any[] : [];
+        const totalWeeks = phases.reduce((acc: number, ph: any) => acc + (ph.weeks ?? 0), 0);
+        if (!totalWeeks) return false;
+        const endDate = new Date(p.createdAt.getTime() + totalWeeks * 7 * 24 * 60 * 60 * 1000);
+        return endDate >= now && endDate <= endOfDay14;
+      })
+      .map((p) => {
+        const phases = Array.isArray(p.phases) ? p.phases as any[] : [];
+        const totalWeeks = phases.reduce((acc: number, ph: any) => acc + (ph.weeks ?? 0), 0);
+        const endDate = new Date(p.createdAt.getTime() + totalWeeks * 7 * 24 * 60 * 60 * 1000);
+        const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return {
+          programId: p.id,
+          programName: p.name,
+          clientId: (p.client as any).id,
+          clientName: (p.client as any).name,
+          daysLeft,
+          endDate: endDate.toISOString(),
+        };
+      })
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+
+    // ── Clientes com streak alto (motivar com reconhecimento) ─────────────
+    const topStreaks = clients
+      .map((c) => {
+        const m = metricsMap.get(c.id);
+        return { clientId: c.id, name: c.name, streak: m?.workoutStreak ?? 0, totalWorkouts: m?.totalWorkouts ?? 0 };
+      })
+      .filter((c) => c.streak >= 3)
+      .sort((a, b) => b.streak - a.streak)
+      .slice(0, 5);
+
+    return {
+      inactiveClients,
+      weeklyLoad,
+      expiringPrograms: expiring,
+      topStreaks,
+      upcomingSessionsCount: upcomingSessions.length,
+    };
+  }
+
   // ─── Actividade recente de todos os clientes ─────────────────────────────
 
   async getClientsActivity() {

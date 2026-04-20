@@ -2,6 +2,7 @@
 import { DashboardStats } from '@libs/types';
 import { PageHeader, KpiCard, SectionTitle, EmptyState } from '../../../components/ui';
 import { useDashboardStats } from '../../../lib/hooks/useStats';
+import { PtInsightsPanel } from '../../../components/dashboard/PtInsightsPanel';
 
 export default function AdminDashboardPage() {
   const { data: stats, isLoading } = useDashboardStats();
@@ -57,6 +58,9 @@ export default function AdminDashboardPage() {
 
         {/* Right sidebar — 1/3 */}
         <div className="flex flex-col gap-6">
+          {/* PT Insights */}
+          <PtInsightsPanel />
+
           {/* Weekly forecast */}
           <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
             <p className="label-category mb-1">Previsão semanal</p>

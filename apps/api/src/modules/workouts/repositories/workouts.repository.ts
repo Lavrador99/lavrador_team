@@ -83,6 +83,15 @@ export class WorkoutsRepository {
     return this.prisma.workout.delete({ where: { id } });
   }
 
+  // Último log do workout — usado para histórico inline durante o treino
+  async findLastLogByWorkout(workoutId: string, clientId: string) {
+    return this.prisma.workoutLog.findFirst({
+      where: { workoutId, clientId },
+      orderBy: { date: 'desc' },
+      select: { id: true, date: true, entries: true, durationMin: true, rpe: true },
+    });
+  }
+
   // Logs
   async createLog(data: {
     workoutId: string;

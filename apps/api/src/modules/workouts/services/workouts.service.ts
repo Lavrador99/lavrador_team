@@ -304,4 +304,9 @@ export class WorkoutsService {
   async getMuscleVolume(clientId: string, weeks = 4) {
     return this.repo.findMuscleVolume(clientId, weeks);
   }
+
+  async getLastLog(workoutId: string, userId: string) {
+    const clientId = await this.resolveClientId(userId);
+    return this.repo.findLastLogByWorkout(workoutId, clientId);
+  }
 }

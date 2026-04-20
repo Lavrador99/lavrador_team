@@ -341,6 +341,59 @@ export class SuggestionService {
     };
   }
 
+  // ─── Alternativas rápidas para substituição durante treino ────────────
+  // Dado um exercício, devolve alternativas do mesmo padrão de movimento.
+
+  async getAlternatives(exerciseId: string, clientFlags: string[] = [], limit = 6) {
+    const original = await this.prisma.exercise.findUnique({
+      where: { id: exerciseId },
+      select: { id: true, name: true, pattern: true, level: true, equipment: true },
+    });
+    if (!original) return [];
+
+    const avoidPatterns = new Set<string>();
+    for (const flag of clientFlags) {
+      const rule = CLINICAL_FLAGS_RULES[flag];
+      if (rule) rule.avoid.forEach((p) => avoidPatterns.add(p));
+    }
+
+    if (avoidPatterns.has(original.pattern)) return [];
+
+    const candidates = await this.prisma.exercise.findMany({
+      where: {
+        isActive: true,
+        id: { not: exerciseId },
+        pattern: original.pattern,
+        level: { in: this.getLevelsForClient(original.level) },
+      },
+      select: {
+        id: true,
+        name: true,
+        pattern: true,
+        primaryMuscles: true,
+        equipment: true,
+        preferenceScores: {
+          select: { score: true, timesUsed: true },
+          take: 1,
+          orderBy: { score: 'desc' },
+        },
+      },
+      take: limit * 3,
+    });
+
+    return candidates
+      .map((ex) => ({
+        exerciseId: ex.id,
+        name: ex.name,
+        pattern: ex.pattern,
+        primaryMuscles: ex.primaryMuscles,
+        equipment: ex.equipment,
+        score: ex.preferenceScores[0]?.score ?? 1.0,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+  }
+
   // ─── Helpers ──────────────────────────────────────────────────────────
 
   private getPatternsForObjective(
