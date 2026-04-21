@@ -25,6 +25,7 @@ import { ProgressPhotosModule } from './modules/progress-photos/progress-photos.
 import { NutritionModule } from './modules/nutrition/nutrition.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { BodyMeasurementsModule } from './modules/body-measurements/body-measurements.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { BodyMeasurementsModule } from './modules/body-measurements/body-measure
     NutritionModule,
     NotificationsModule,
     BodyMeasurementsModule,
+    OnboardingModule,
   ],
 })
 export class AppModule {}

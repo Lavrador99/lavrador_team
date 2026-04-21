@@ -1,10 +1,83 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InvoiceStatus } from '@prisma/client';
 import { InvoicesRepository } from './invoices.repository';
+import Stripe from 'stripe';
 
 @Injectable()
 export class InvoicesService {
+  private readonly logger = new Logger(InvoicesService.name);
+
   constructor(private readonly repo: InvoicesRepository) {}
+
+  async createPaymentLink(invoiceId: string) {
+    const invoice = await this.repo.findById(invoiceId);
+    if (!invoice) throw new NotFoundException('Factura não encontrada');
+    if (!['PENDING', 'OVERDUE'].includes(invoice.status)) {
+      throw new BadRequestException('Só é possível criar link de pagamento para facturas pendentes ou em atraso');
+    }
+
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      throw new BadRequestException('Stripe não configurado (STRIPE_SECRET_KEY em falta)');
+    }
+
+    const stripe = new Stripe(secretKey, { apiVersion: '2025-03-31.basil' });
+    const appUrl = process.env.APP_URL ?? process.env.PLATFORM_URL ?? 'http://localhost:3000';
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: invoice.currency.toLowerCase(),
+          product_data: { name: invoice.description },
+          unit_amount: Math.round(invoice.amount * 100),
+        },
+        quantity: 1,
+      }],
+      mode: 'payment',
+      success_url: `${appUrl}/client/invoices?paid=true`,
+      cancel_url: `${appUrl}/client/invoices`,
+      metadata: { invoiceId },
+    });
+
+    await this.repo.update(invoiceId, {
+      stripeCheckoutUrl: session.url ?? undefined,
+      stripeSessionId: session.id,
+    });
+
+    return { checkoutUrl: session.url };
+  }
+
+  async handleStripeWebhook(payload: Buffer, signature: string) {
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      this.logger.warn('STRIPE_WEBHOOK_SECRET não configurado');
+      return { received: true };
+    }
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-03-31.basil' });
+
+    let event: Stripe.Event;
+    try {
+      event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    } catch (err) {
+      throw new BadRequestException(`Webhook inválido: ${(err as Error).message}`);
+    }
+
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const invoiceId = session.metadata?.invoiceId;
+      if (invoiceId) {
+        await this.repo.update(invoiceId, {
+          status: InvoiceStatus.PAID,
+          paidAt: new Date(),
+        });
+        this.logger.log(`Factura ${invoiceId} marcada como PAGA via Stripe`);
+      }
+    }
+
+    return { received: true };
+  }
 
   create(data: {
     clientId: string;

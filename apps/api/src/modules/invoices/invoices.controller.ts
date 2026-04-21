@@ -1,6 +1,7 @@
 import {
-  Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards,
+  Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards, Headers, RawBodyRequest, Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { JwtGuard } from '../../common/guards/jwt.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -52,5 +53,20 @@ export class InvoicesController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.invoicesService.delete(id);
+  }
+
+  @Roles('ADMIN')
+  @Post(':id/payment-link')
+  createPaymentLink(@Param('id') id: string) {
+    return this.invoicesService.createPaymentLink(id);
+  }
+
+  // Public endpoint for Stripe webhooks — skip JWT
+  @Post('webhook/stripe')
+  stripeWebhook(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('stripe-signature') signature: string,
+  ) {
+    return this.invoicesService.handleStripeWebhook(req.rawBody!, signature);
   }
 }

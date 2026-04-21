@@ -116,6 +116,7 @@ model User {
   sentMessages      Message[]          @relation("SentMessages")
   receivedMessages  Message[]          @relation("ReceivedMessages")
   pushSubscriptions PushSubscription[]
+  onboardingTokens  OnboardingToken[]
 
   @@map("users")
 }
@@ -208,17 +209,19 @@ enum InvoiceStatus {
 }
 
 model Invoice {
-  id          String        @id @default(cuid())
-  clientId    String
-  amount      Float
-  currency    String        @default("EUR")
-  description String
-  status      InvoiceStatus @default(PENDING)
-  dueDate     DateTime
-  paidAt      DateTime?
-  notes       String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id                 String        @id @default(cuid())
+  clientId           String
+  amount             Float
+  currency           String        @default("EUR")
+  description        String
+  status             InvoiceStatus @default(PENDING)
+  dueDate            DateTime
+  paidAt             DateTime?
+  notes              String?
+  stripeCheckoutUrl  String?
+  stripeSessionId    String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
@@ -623,4 +626,23 @@ model BodyMeasurement {
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@map("body_measurements")
+}
+
+// ─────────────────────────────────────────
+// ONBOARDING (client self-service intake)
+// ─────────────────────────────────────────
+
+model OnboardingToken {
+  id          String    @id @default(cuid())
+  token       String    @unique @default(cuid())
+  ptUserId    String
+  clientName  String?
+  clientEmail String?
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+
+  pt User @relation(fields: [ptUserId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_tokens")
 }

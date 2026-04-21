@@ -2,12 +2,19 @@ import { Module } from '@nestjs/common';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { CheckinScheduler } from './checkin.scheduler';
+import { StreakProtectionScheduler } from './streak-protection.scheduler';
+import { SessionReminderScheduler } from './session-reminder.scheduler';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [PrismaModule, EmailModule],
-  providers: [NotificationsService, CheckinScheduler],
+  providers: [
+    NotificationsService,
+    CheckinScheduler,
+    StreakProtectionScheduler,
+    SessionReminderScheduler,
+  ],
   controllers: [NotificationsController],
   exports: [NotificationsService],
 })
