@@ -52,7 +52,7 @@ export interface UpdateProfileRequest {
 // PRESCRIÇÃO — Fase 2 (tipos base já definidos para não bloquear)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type TrainingLevel = "iniciante" | "intermedio" | "avancado";
+export type TrainingLevel = "INICIANTE" | "INTERMEDIO" | "AVANCADO";
 export type TrainingGoal =
   | "emagrecimento"
   | "hipertrofia"
@@ -62,25 +62,30 @@ export type TrainingGoal =
   | "performance";
 
 export type MovementPattern =
-  | "dominante_joelho"
-  | "dominante_anca"
-  | "empurrar_horizontal"
-  | "empurrar_vertical"
-  | "puxar_horizontal"
-  | "puxar_vertical"
-  | "core"
-  | "locomocao";
+  | "DOMINANTE_JOELHO"
+  | "DOMINANTE_ANCA"
+  | "EMPURRAR_HORIZONTAL"
+  | "EMPURRAR_VERTICAL"
+  | "PUXAR_HORIZONTAL"
+  | "PUXAR_VERTICAL"
+  | "CORE"
+  | "LOCOMOCAO";
 
 export type Equipment =
-  | "barra"
-  | "halteres"
-  | "rack"
-  | "maquinas"
-  | "cabo"
-  | "kettlebell"
-  | "peso_corporal"
-  | "banco"
-  | "cardio_eq";
+  | "BARRA"
+  | "HALTERES"
+  | "RACK"
+  | "MAQUINAS"
+  | "CABO"
+  | "KETTLEBELL"
+  | "PESO_CORPORAL"
+  | "BANCO"
+  | "CARDIO_EQ"
+  | "SMITH"
+  | "RESISTANCE_BAND"
+  | "PARALELAS"
+  | "BARRA_FIXA"
+  | "FOAM_ROLLER";
 
 export interface ExerciseDto {
   id: string;

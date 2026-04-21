@@ -2,6 +2,7 @@
 import useSWR from 'swr';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useRef, createElement } from 'react';
+import { ProgramPhase } from '@libs/types';
 import { clientsApi, sessionsApi } from '../../../../lib/api/clients.api';
 import { programsApi, assessmentsApi } from '../../../../lib/api/prescription.api';
 import { downloadPdf } from '../../../../lib/pdf/downloadPdf';
@@ -20,6 +21,89 @@ import {
 } from '../../../../lib/constants/styles';
 
 type Tab = 'overview' | 'programs' | 'sessions' | 'assessments' | 'fotos' | 'habitos' | 'pagamentos' | 'timeline';
+
+const PATTERN_LABEL: Record<string, string> = {
+  EMPURRAR_HORIZONTAL: 'Peito',
+  PUXAR_VERTICAL: 'Costas V.',
+  PUXAR_HORIZONTAL: 'Costas H.',
+  EMPURRAR_VERTICAL: 'Ombros',
+  DOMINANTE_JOELHO: 'Pernas Q.',
+  DOMINANTE_ANCA: 'Pernas G.',
+  CORE: 'Core',
+  LOCOMOCAO: 'Full Body',
+};
+
+function ProgramPhasePanel({ phase, index }: { phase: ProgramPhase; index: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-surface-container rounded-xl mb-2 overflow-hidden border border-outline-variant/10">
+      <button
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high transition-colors"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <div className="w-6 h-6 rounded kinetic-gradient flex items-center justify-center font-label font-bold text-on-primary text-[10px] flex-shrink-0">
+          {String(index + 1).padStart(2, '0')}
+        </div>
+        <div className="flex-1 text-left">
+          <div className="font-headline font-bold text-xs text-on-surface" dangerouslySetInnerHTML={{ __html: phase.name }} />
+          <div className="font-label text-[10px] text-secondary">{phase.sub} · {phase.weeks} sem.</div>
+        </div>
+        <span className="material-symbols-outlined text-outline text-sm" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>expand_more</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 border-t border-outline-variant/10">
+          <p className="font-body text-xs text-secondary mt-3 mb-3 leading-relaxed">{phase.description}</p>
+          <div className="flex flex-wrap gap-1 mb-3">
+            {phase.method?.map((m) => (
+              <span key={m} className="label-category px-2 py-0.5 rounded bg-blue-50 text-blue-700">{m}</span>
+            ))}
+          </div>
+          {[
+            { title: 'Cardiovascular', icon: 'directions_run', cls: 'text-blue-700', data: phase.cardio, fields: ['freq', 'intensidade', 'tempo', 'tipo', 'volume', 'progressao'] },
+            { title: 'Força', icon: 'fitness_center', cls: 'text-primary', data: phase.forca, fields: ['freq', 'intensidade', 'series', 'intervalo', 'velocidade', 'progressao'] },
+            { title: 'Flexibilidade', icon: 'self_improvement', cls: 'text-orange-600', data: phase.flex, fields: ['freq', 'tipo', 'tempo', 'volume', 'foco'] },
+          ].map(({ title, icon, cls, data, fields }) => (
+            <div key={title} className="mb-3">
+              <p className={`label-category mb-1.5 flex items-center gap-1 ${cls}`}>
+                <span className="material-symbols-outlined text-sm">{icon}</span>{title}
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {fields.map((f) => {
+                  const d = data as Record<string, string> | undefined;
+                  return d?.[f] ? (
+                    <div key={f} className="bg-surface-container-lowest rounded p-2 border border-outline-variant/10">
+                      <p className="label-category mb-0.5">{f}</p>
+                      <p className="font-body text-xs text-on-surface leading-relaxed" style={{ whiteSpace: 'pre-line' }}>{d[f]}</p>
+                    </div>
+                  ) : null;
+                })}
+              </div>
+            </div>
+          ))}
+          {phase.weekByWeek?.length > 0 && (
+            <table className="w-full text-xs mt-2 border-collapse">
+              <thead>
+                <tr>{['Semana', 'Força', 'Cardio', 'Flex'].map((h) => (
+                  <th key={h} className="text-left py-1.5 px-2 label-category border-b border-outline-variant/10">{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                {phase.weekByWeek.map((w, wi) => (
+                  <tr key={wi} className="border-b border-outline-variant/5 last:border-0">
+                    <td className="py-1.5 px-2 label-category">S{w.wk}</td>
+                    <td className="py-1.5 px-2 font-body text-xs text-on-surface">{w.forca}</td>
+                    <td className="py-1.5 px-2 font-body text-xs text-on-surface">{w.cardio}</td>
+                    <td className="py-1.5 px-2 font-body text-xs text-on-surface">{w.flex}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'overview',    label: 'Visão geral', icon: 'person' },
@@ -42,6 +126,7 @@ export default function ClientDetailPage() {
   const [newHabitName, setNewHabitName] = useState('');
   const [savingHabit, setSavingHabit] = useState(false);
   const [cloningId, setCloningId] = useState<string | null>(null);
+  const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
 
   const { data: client } = useSWR(clientId ? `client-${clientId}` : null, () => clientsApi.getDetail(clientId!));
   const { data: stats } = useSWR(clientId ? `stats-${clientId}` : null, () => statsApi.getClient(clientId!));
@@ -250,37 +335,100 @@ export default function ClientDetailPage() {
             <EmptyState icon="fitness_center" title="Nenhum plano criado." />
           ) : (
             <div className="flex flex-col gap-3">
-              {programs.map((p: any) => (
-                <div key={p.id} className="bg-surface-container-lowest rounded-xl px-5 py-4 shadow-sm flex items-center gap-4">
-                  <div className="flex-1">
-                    <div className="font-headline font-bold text-base text-on-surface">{p.name}</div>
-                    <div className="font-label text-xs text-secondary mt-0.5">{new Date(p.createdAt).toLocaleDateString('pt-PT')}</div>
+              {programs.map((p: any) => {
+                const isExpanded = expandedProgramId === p.id;
+                const phases = (p.phases ?? []) as ProgramPhase[];
+                const selections = (p.exerciseSelections ?? []) as any[];
+                const selByPattern = selections.reduce((acc: Record<string, string[]>, sel: any) => {
+                  const label = PATTERN_LABEL[sel.pattern] ?? sel.pattern;
+                  if (!acc[label]) acc[label] = [];
+                  if (sel.exercise?.name) acc[label].push(sel.exercise.name);
+                  return acc;
+                }, {});
+                return (
+                  <div key={p.id} className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+                    <div className="px-5 py-4 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-headline font-bold text-base text-on-surface">{p.name}</div>
+                        <div className="font-label text-xs text-secondary mt-0.5">
+                          {new Date(p.createdAt).toLocaleDateString('pt-PT')}
+                          {phases.length > 0 && ` · ${phases.length} fases · ${phases.reduce((a: number, ph: ProgramPhase) => a + (ph.weeks || 0), 0)} sem.`}
+                          {selections.length > 0 && ` · ${selections.length} exerc.`}
+                        </div>
+                      </div>
+                      <span className={`label-category px-2 py-0.5 rounded flex-shrink-0 ${p.status === 'ACTIVE' ? 'text-primary bg-primary-fixed' : 'text-secondary bg-surface-container'}`}>
+                        {p.status === 'ACTIVE' ? 'Activo' : 'Arquivado'}
+                      </span>
+                      <button
+                        onClick={() => setExpandedProgramId(isExpanded ? null : p.id)}
+                        className={`font-label font-bold text-xs px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 flex-shrink-0 ${isExpanded ? 'text-primary bg-primary-fixed' : 'text-secondary bg-surface-container-high hover:bg-surface-container-highest'}`}
+                      >
+                        <span className="material-symbols-outlined text-sm">description</span>
+                        Prescrição
+                      </button>
+                      <button
+                        onClick={() => router.push(`/workouts?programId=${p.id}&clientId=${clientId}`)}
+                        className="font-label font-bold text-xs text-secondary bg-surface-container-high hover:bg-surface-container-highest px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
+                      >
+                        Treinos
+                      </button>
+                      <button
+                        onClick={() => handleCloneProgram(p.id)}
+                        disabled={cloningId === p.id}
+                        className="font-label font-bold text-xs text-secondary bg-surface-container-high hover:bg-surface-container-highest px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1 flex-shrink-0"
+                        title="Duplicar plano"
+                      >
+                        <span className="material-symbols-outlined text-sm">{cloningId === p.id ? 'hourglass_empty' : 'content_copy'}</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProgram(p.id)}
+                        className="text-error hover:bg-error/5 p-1.5 rounded-lg transition-colors flex-shrink-0"
+                      >
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="border-t border-outline-variant/10 px-5 pb-5">
+                        {Object.keys(selByPattern).length > 0 && (
+                          <div className="mt-4 mb-5">
+                            <p className="label-category text-primary mb-3 flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm">fitness_center</span>
+                              Exercícios Selecionados
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {Object.entries(selByPattern).map(([label, names]) => (
+                                <div key={label} className="bg-surface-container rounded-lg p-3 border border-outline-variant/10">
+                                  <p className="label-category mb-1.5">{label}</p>
+                                  {(names as string[]).map((n) => (
+                                    <p key={n} className="font-body text-xs text-on-surface leading-relaxed">• {n}</p>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {phases.length > 0 && (
+                          <div>
+                            <p className="label-category text-primary mb-3 flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                              Fases ACSM 2026
+                            </p>
+                            {phases.map((phase, i) => (
+                              <ProgramPhasePanel key={i} phase={phase} index={i} />
+                            ))}
+                          </div>
+                        )}
+
+                        {phases.length === 0 && Object.keys(selByPattern).length === 0 && (
+                          <p className="font-label text-xs text-secondary mt-4">Sem dados de prescrição disponíveis.</p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <span className={`label-category px-2 py-0.5 rounded ${p.status === 'ACTIVE' ? 'text-primary bg-primary-fixed' : 'text-secondary bg-surface-container'}`}>
-                    {p.status === 'ACTIVE' ? 'Activo' : 'Arquivado'}
-                  </span>
-                  <button
-                    onClick={() => router.push(`/workouts?programId=${p.id}&clientId=${clientId}`)}
-                    className="font-label font-bold text-xs text-secondary bg-surface-container-high hover:bg-surface-container-highest px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    Treinos
-                  </button>
-                  <button
-                    onClick={() => handleCloneProgram(p.id)}
-                    disabled={cloningId === p.id}
-                    className="font-label font-bold text-xs text-secondary bg-surface-container-high hover:bg-surface-container-highest px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1"
-                    title="Duplicar plano"
-                  >
-                    <span className="material-symbols-outlined text-sm">{cloningId === p.id ? 'hourglass_empty' : 'content_copy'}</span>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteProgram(p.id)}
-                    className="text-error hover:bg-error/5 p-1.5 rounded-lg transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-sm">delete</span>
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

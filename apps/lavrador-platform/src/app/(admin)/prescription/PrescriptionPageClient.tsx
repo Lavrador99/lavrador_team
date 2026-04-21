@@ -448,14 +448,14 @@ function Step3() {
 
 // ─── Step 4 ──────────────────────────────────────────────────────────────────
 const PATTERNS: { key: MovementPattern; label: string }[] = [
-  { key: 'empurrar_horizontal', label: 'Peito' },
-  { key: 'puxar_vertical', label: 'Costas V.' },
-  { key: 'puxar_horizontal', label: 'Costas H.' },
-  { key: 'empurrar_vertical', label: 'Ombros' },
-  { key: 'dominante_joelho', label: 'Pernas Q.' },
-  { key: 'dominante_anca', label: 'Pernas G.' },
-  { key: 'core', label: 'Core' },
-  { key: 'locomocao', label: 'Full Body' },
+  { key: 'EMPURRAR_HORIZONTAL', label: 'Peito' },
+  { key: 'PUXAR_VERTICAL', label: 'Costas V.' },
+  { key: 'PUXAR_HORIZONTAL', label: 'Costas H.' },
+  { key: 'EMPURRAR_VERTICAL', label: 'Ombros' },
+  { key: 'DOMINANTE_JOELHO', label: 'Pernas Q.' },
+  { key: 'DOMINANTE_ANCA', label: 'Pernas G.' },
+  { key: 'CORE', label: 'Core' },
+  { key: 'LOCOMOCAO', label: 'Full Body' },
 ];
 const EQUIP_MAP: Record<string, string> = {
   ginasio_completo: 'BARRA,HALTERES,RACK,MAQUINAS,CABO,KETTLEBELL,BANCO,CARDIO_EQ,BARRA_FIXA,PARALELAS,RESISTANCE_BAND,PESO_CORPORAL',
@@ -467,7 +467,7 @@ const EQUIP_MAP: Record<string, string> = {
 
 function Step4() {
   const { formData, selections, addSelection, replaceSelection, nextStep, prevStep } = usePrescriptionStore();
-  const [activePattern, setActivePattern] = useState<MovementPattern>('empurrar_horizontal');
+  const [activePattern, setActivePattern] = useState<MovementPattern>('EMPURRAR_HORIZONTAL');
   const [swapTarget, setSwapTarget] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
