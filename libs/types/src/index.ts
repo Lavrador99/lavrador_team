@@ -557,3 +557,52 @@ export interface CreateUserRequest {
   phone?: string;
   notes?: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACHIEVEMENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type AchievementType =
+  | "FIRST_WORKOUT"
+  | "STREAK_3"
+  | "STREAK_7"
+  | "STREAK_30"
+  | "WORKOUTS_10"
+  | "WORKOUTS_50"
+  | "WORKOUTS_100"
+  | "FIRST_PR"
+  | "PRS_5"
+  | "CONSISTENCY_MONTH";
+
+export interface AchievementDto {
+  id: string;
+  type: AchievementType;
+  name: string;
+  icon: string;
+  description: string;
+  earnedAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// READINESS CHECK-IN
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ReadinessLogDto {
+  id: string;
+  clientId: string;
+  date: string;
+  sleep: number;
+  stress: number;
+  energy: number;
+  soreness: number;
+  notes?: string;
+  score?: number;
+}
+
+export interface CreateReadinessRequest {
+  sleep: number;
+  stress: number;
+  energy: number;
+  soreness: number;
+  notes?: string;
+}

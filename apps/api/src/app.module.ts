@@ -26,6 +26,9 @@ import { NutritionModule } from './modules/nutrition/nutrition.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { BodyMeasurementsModule } from './modules/body-measurements/body-measurements.module';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { AchievementsModule } from './modules/achievements/achievements.module';
+import { ReadinessModule } from './modules/readiness/readiness.module';
+import { AutomationsModule } from './modules/automations/automations.module';
 
 @Module({
   imports: [
@@ -66,6 +69,9 @@ import { OnboardingModule } from './modules/onboarding/onboarding.module';
     NotificationsModule,
     BodyMeasurementsModule,
     OnboardingModule,
+    AchievementsModule,
+    ReadinessModule,
+    AutomationsModule,
   ],
 })
 export class AppModule {}
