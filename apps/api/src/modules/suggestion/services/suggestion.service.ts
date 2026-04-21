@@ -7,10 +7,12 @@ import {
   AcsmPrescription,
   CLINICAL_FLAGS_RULES,
   FREQUENCY_BY_LEVEL,
+  KarvonenZonesInput,
   applyClinicalOverrides,
   mapObjectiveToAcsm,
   TrainingObjective,
   validatePrescription,
+  validatePatternSelection,
 } from "./acsm-guidelines.engine";
 
 const THRESHOLD_WORKOUTS = 10; // mínimo de workouts para activar sugestões com peso do PT
@@ -196,6 +198,12 @@ export class SuggestionService {
     if (prescription.rpeMaxCap) {
       warnings.push(`Limite de esforço clínico: RPE ≤${prescription.rpeMaxCap} (flag de risco cardiovascular).`);
     }
+    // Validação de padrões de movimento vs. objectivo
+    if (req.pattern) {
+      // Padrão específico pedido — verificar se é recomendado para o objectivo
+      const patternWarnings = validatePatternSelection([req.pattern], objective, req.flags);
+      warnings.push(...patternWarnings);
+    }
     // Karvonen: se assessmentId presente, verificar zonas de FC
     if (req.assessmentId) {
       const assessment = await this.prisma.assessment.findUnique({
@@ -205,12 +213,21 @@ export class SuggestionService {
       if (assessment) {
         const data = assessment.data as Record<string, unknown>;
         const computed = data?._computed as Record<string, unknown> | undefined;
-        const zones = computed?.karvonenZones as { zone2Max?: number } | undefined;
-        const isSedentary = req.flags.includes('sedentario') || assessment.flags.includes('sedentario');
-        if (zones?.zone2Max && isSedentary && prescription.percentRM.max > 60) {
-          warnings.push(
-            `Karvonen: perfil sedentário — manter %RM ≤60 nas primeiras 4 semanas (zona 2 FC: ≤${zones.zone2Max} bpm).`,
-          );
+        // Usar o tipo correcto das zonas de Karvonen (z1/z2/z3, não zone2Max)
+        const zones = computed?.karvonenZones as KarvonenZonesInput | undefined;
+        const allFlags = [...req.flags, ...assessment.flags];
+        const isSedentary = allFlags.includes('sedentario');
+        if (zones?.z2?.high) {
+          if (isSedentary && prescription.percentRM.max > 60) {
+            warnings.push(
+              `Karvonen: perfil sedentário — manter %RM ≤60 nas primeiras 4 semanas (zona 2 FC: ≤${zones.z2.high} bpm).`,
+            );
+          } else if (!isSedentary) {
+            warnings.push(
+              `Karvonen: zonas de FC calculadas — Z1: ${zones.z1.low}–${zones.z1.high} bpm · ` +
+              `Z2: ${zones.z2.low}–${zones.z2.high} bpm · Z3: ${zones.z3.low}–${zones.z3.high} bpm.`,
+            );
+          }
         }
       }
     }

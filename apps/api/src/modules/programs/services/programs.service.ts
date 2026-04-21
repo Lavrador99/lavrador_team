@@ -31,7 +31,7 @@ export class ProgramsService {
     }));
 
     // Gerar plano
-    const phases = generatePrescriptionPlan({
+    const { phases, validationWarnings } = generatePrescriptionPlan({
       level: assessment.level,
       data: assessment.data as any,
       selectedExercises: selectedWithNames,
@@ -53,7 +53,7 @@ export class ProgramsService {
       })),
     });
 
-    return program;
+    return { ...program, validationWarnings };
   }
 
   async findById(id: string) {

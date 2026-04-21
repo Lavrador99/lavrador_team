@@ -267,6 +267,180 @@ export function mapObjectiveToAcsm(rawObjective: string): TrainingObjective {
   return 'SAUDE_GERAL'; // default
 }
 
+// ─── Padrões recomendados por objectivo (ACSM 2026) ──────────────────────────
+
+/**
+ * Padrões de movimento que o ACSM 2026 recomenda para cada objectivo de treino.
+ * Usados para validar se as selecções do utilizador cobrem os padrões necessários.
+ */
+export const REQUIRED_PATTERNS_BY_OBJECTIVE: Record<TrainingObjective, string[]> = {
+  FORCA:       ['DOMINANTE_JOELHO', 'DOMINANTE_ANCA', 'EMPURRAR_HORIZONTAL', 'PUXAR_VERTICAL'],
+  HIPERTROFIA: ['DOMINANTE_JOELHO', 'DOMINANTE_ANCA', 'EMPURRAR_HORIZONTAL', 'EMPURRAR_VERTICAL', 'PUXAR_HORIZONTAL', 'PUXAR_VERTICAL', 'CORE'],
+  RESISTENCIA: ['DOMINANTE_JOELHO', 'DOMINANTE_ANCA', 'EMPURRAR_HORIZONTAL', 'PUXAR_HORIZONTAL', 'CORE', 'LOCOMOCAO'],
+  POTENCIA:    ['DOMINANTE_JOELHO', 'DOMINANTE_ANCA', 'LOCOMOCAO'],
+  SAUDE_GERAL: ['DOMINANTE_JOELHO', 'DOMINANTE_ANCA', 'EMPURRAR_HORIZONTAL', 'PUXAR_HORIZONTAL', 'CORE'],
+};
+
+// ─── Zonas de Karvonen esperadas por nível e fase (ACSM 2026) ─────────────────
+
+/**
+ * Zona de Karvonen correcta para cada fase de treino por nível.
+ * Fonte: ACSM 2026 — Cardio prescription progressions (Tabela 5).
+ * allowZ3: a fase admite progressão até Zona 3 no final do ciclo.
+ */
+export const CARDIO_ZONE_BY_LEVEL_PHASE: Record<
+  TrainingLevel,
+  Record<number, { zoneKey: 'z1' | 'z2' | 'z3'; allowZ3?: boolean; label: string }>
+> = {
+  INICIANTE: {
+    1: { zoneKey: 'z1', label: 'Zona 1 (50–60%) — adaptação anatómica' },
+    2: { zoneKey: 'z2', label: 'Zona 2 (60–75%) — base aeróbia' },
+    3: { zoneKey: 'z2', allowZ3: true, label: 'Zona 2–3 (60–90%) — progressão' },
+  },
+  INTERMEDIO: {
+    1: { zoneKey: 'z2', label: 'Zona 2 (60–75%) — consolidação' },
+    2: { zoneKey: 'z2', allowZ3: true, label: 'Zona 2–3 (60–90%) — intensificação' },
+  },
+  AVANCADO: {
+    1: { zoneKey: 'z1', label: 'Zona 1 (50–60%) — deload regenerativo' },
+    2: { zoneKey: 'z2', allowZ3: true, label: 'Zona 2–3 (60–90%) — base aeróbia avançada' },
+  },
+};
+
+export interface KarvonenZoneRange {
+  low: number;
+  high: number;
+  label?: string;
+}
+
+export interface KarvonenZonesInput {
+  z1: KarvonenZoneRange;
+  z2: KarvonenZoneRange;
+  z3: KarvonenZoneRange;
+}
+
+// ─── Validação 1: Volume semanal por padrão ───────────────────────────────────
+
+/**
+ * Valida se o volume semanal estimado de séries por padrão de movimento respeita
+ * os mínimos ACSM 2026 para o objectivo prescrito.
+ *
+ * @param setsPerSession  — séries por exercício por sessão
+ * @param sessionsPerWeek — número de sessões semanais
+ * @param activePatternCount — padrões de movimento distintos no plano
+ * @param objective       — objectivo ACSM
+ */
+export function validateWeeklyVolume(
+  setsPerSession: number,
+  sessionsPerWeek: number,
+  activePatternCount: number,
+  objective: TrainingObjective,
+): string[] {
+  const guide = ACSM_GUIDELINES[objective];
+  const warnings: string[] = [];
+
+  if (activePatternCount < 1 || setsPerSession < 1 || sessionsPerWeek < 1) return warnings;
+
+  const totalSets = setsPerSession * sessionsPerWeek;
+  const setsPerPattern = totalSets / activePatternCount;
+
+  if (setsPerPattern < guide.weeklySetsPerPattern.min) {
+    warnings.push(
+      `ACSM 2026: Volume semanal insuficiente para ${objective}. ` +
+      `Estimativa: ${Math.round(setsPerPattern)} séries/padrão/semana — ` +
+      `mínimo recomendado: ${guide.weeklySetsPerPattern.min} séries/padrão/semana.`,
+    );
+  }
+
+  return warnings;
+}
+
+// ─── Validação 2: Zona de Karvonen por nível e fase ───────────────────────────
+
+/**
+ * Valida se os limites de FC de um bloco cardio (bpm) estão alinhados com as
+ * zonas de Karvonen calculadas para o cliente, dado o seu nível e fase actual.
+ * Tolerância de ±5 bpm aplicada para evitar falsos positivos.
+ */
+export function validateCardioZone(
+  cardioZoneLow: number,
+  cardioZoneHigh: number,
+  karvonenZones: KarvonenZonesInput,
+  level: TrainingLevel,
+  phase: number,
+): string[] {
+  const warnings: string[] = [];
+  const phaseSpec = CARDIO_ZONE_BY_LEVEL_PHASE[level]?.[phase];
+  if (!phaseSpec) return warnings;
+
+  const expectedZone = karvonenZones[phaseSpec.zoneKey];
+  const maxAllowedHigh = phaseSpec.allowZ3 ? karvonenZones.z3.high : expectedZone.high;
+  const TOLERANCE = 5;
+
+  if (cardioZoneLow < expectedZone.low - TOLERANCE) {
+    warnings.push(
+      `ACSM 2026 Karvonen: FC mínima do bloco (${cardioZoneLow} bpm) abaixo do esperado ` +
+      `para ${level} Fase ${phase} — ${phaseSpec.label} (mínimo: ${expectedZone.low} bpm).`,
+    );
+  }
+
+  if (cardioZoneHigh > maxAllowedHigh + TOLERANCE) {
+    warnings.push(
+      `ACSM 2026 Karvonen: FC máxima do bloco (${cardioZoneHigh} bpm) acima do esperado ` +
+      `para ${level} Fase ${phase} — ${phaseSpec.label} (máximo: ${maxAllowedHigh} bpm).`,
+    );
+  }
+
+  return warnings;
+}
+
+// ─── Validação 3: Padrões de movimento por objectivo ─────────────────────────
+
+const PATTERN_LABELS_PT: Record<string, string> = {
+  DOMINANTE_JOELHO:    'dominante de joelho',
+  DOMINANTE_ANCA:      'dominante de anca',
+  EMPURRAR_HORIZONTAL: 'empurrar horizontal',
+  EMPURRAR_VERTICAL:   'empurrar vertical',
+  PUXAR_HORIZONTAL:    'puxar horizontal',
+  PUXAR_VERTICAL:      'puxar vertical',
+  CORE:                'core',
+  LOCOMOCAO:           'locomoção',
+};
+
+/**
+ * Valida se os padrões de movimento seleccionados cobrem os padrões recomendados
+ * pelo ACSM 2026 para o objectivo. Flags clínicos justificam ausências esperadas.
+ */
+export function validatePatternSelection(
+  selectedPatterns: string[],
+  objective: TrainingObjective,
+  flags: string[] = [],
+): string[] {
+  const required = REQUIRED_PATTERNS_BY_OBJECTIVE[objective];
+  const warnings: string[] = [];
+
+  const clinicallyExcluded = new Set<string>();
+  for (const flag of flags) {
+    const rule = CLINICAL_FLAGS_RULES[flag];
+    if (rule) rule.avoid.forEach((p) => clinicallyExcluded.add(p));
+  }
+
+  const selectedSet = new Set(selectedPatterns);
+  const missing = required.filter((p) => !selectedSet.has(p) && !clinicallyExcluded.has(p));
+
+  if (missing.length > 0) {
+    const labels = missing.map((p) => PATTERN_LABELS_PT[p] ?? p).join(', ');
+    warnings.push(
+      `ACSM 2026: Para ${objective}, os seguintes padrões de movimento são recomendados ` +
+      `mas estão ausentes: ${labels}.`,
+    );
+  }
+
+  return warnings;
+}
+
+// ─── Validação de prescrição base ─────────────────────────────────────────────
+
 /**
  * Verifica se a prescrição respeita os limites ACSM.
  * Devolve lista de avisos (pode estar vazia).
