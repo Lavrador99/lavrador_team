@@ -1,11 +1,17 @@
 import {
   ACSM_GUIDELINES,
+  CARDIO_ZONE_BY_LEVEL_PHASE,
   CLINICAL_FLAGS_RULES,
   FREQUENCY_BY_LEVEL,
+  KarvonenZonesInput,
+  REQUIRED_PATTERNS_BY_OBJECTIVE,
   applyClinicalOverrides,
   extractPhaseDefaults,
   mapObjectiveToAcsm,
+  validateCardioZone,
+  validatePatternSelection,
   validatePrescription,
+  validateWeeklyVolume,
   type TrainingObjective,
 } from './acsm-guidelines.engine';
 
@@ -212,6 +218,250 @@ describe('validatePrescription', () => {
   test('returns multiple warnings for multiple violations', () => {
     const warnings = validatePrescription(1, 2, 30, 'HIPERTROFIA');
     expect(warnings.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ─── REQUIRED_PATTERNS_BY_OBJECTIVE ──────────────────────────────────────────
+
+describe('REQUIRED_PATTERNS_BY_OBJECTIVE', () => {
+  const objectives: TrainingObjective[] = [
+    'FORCA', 'HIPERTROFIA', 'RESISTENCIA', 'POTENCIA', 'SAUDE_GERAL',
+  ];
+
+  test.each(objectives)('%s has at least one required pattern', (obj) => {
+    expect(REQUIRED_PATTERNS_BY_OBJECTIVE[obj].length).toBeGreaterThan(0);
+  });
+
+  test('HIPERTROFIA requires the most patterns (7)', () => {
+    expect(REQUIRED_PATTERNS_BY_OBJECTIVE.HIPERTROFIA.length).toBe(7);
+  });
+
+  test('POTENCIA requires the fewest patterns (3)', () => {
+    expect(REQUIRED_PATTERNS_BY_OBJECTIVE.POTENCIA.length).toBe(3);
+  });
+
+  test('HIPERTROFIA requires CORE', () => {
+    expect(REQUIRED_PATTERNS_BY_OBJECTIVE.HIPERTROFIA).toContain('CORE');
+  });
+
+  test('POTENCIA requires LOCOMOCAO', () => {
+    expect(REQUIRED_PATTERNS_BY_OBJECTIVE.POTENCIA).toContain('LOCOMOCAO');
+  });
+
+  test('FORCA does not require LOCOMOCAO', () => {
+    expect(REQUIRED_PATTERNS_BY_OBJECTIVE.FORCA).not.toContain('LOCOMOCAO');
+  });
+});
+
+// ─── CARDIO_ZONE_BY_LEVEL_PHASE ───────────────────────────────────────────────
+
+describe('CARDIO_ZONE_BY_LEVEL_PHASE', () => {
+  test('INICIANTE phase 1 uses z1 (50–60%)', () => {
+    expect(CARDIO_ZONE_BY_LEVEL_PHASE.INICIANTE[1].zoneKey).toBe('z1');
+  });
+
+  test('INICIANTE phase 2 uses z2 (60–75%)', () => {
+    expect(CARDIO_ZONE_BY_LEVEL_PHASE.INICIANTE[2].zoneKey).toBe('z2');
+  });
+
+  test('AVANCADO phase 1 uses z1 for regenerative deload', () => {
+    expect(CARDIO_ZONE_BY_LEVEL_PHASE.AVANCADO[1].zoneKey).toBe('z1');
+  });
+
+  test('INTERMEDIO phase 2 allows Z3 progression', () => {
+    expect(CARDIO_ZONE_BY_LEVEL_PHASE.INTERMEDIO[2].allowZ3).toBe(true);
+  });
+
+  test('INICIANTE phase 1 does NOT allow Z3', () => {
+    expect(CARDIO_ZONE_BY_LEVEL_PHASE.INICIANTE[1].allowZ3).toBeFalsy();
+  });
+
+  test('each phase has a descriptive label', () => {
+    for (const level of ['INICIANTE', 'INTERMEDIO', 'AVANCADO'] as const) {
+      for (const phase of Object.values(CARDIO_ZONE_BY_LEVEL_PHASE[level])) {
+        expect(phase.label.length).toBeGreaterThan(5);
+      }
+    }
+  });
+});
+
+// ─── validateWeeklyVolume ─────────────────────────────────────────────────────
+
+describe('validateWeeklyVolume', () => {
+  test('returns no warning when volume meets HIPERTROFIA minimum', () => {
+    // 3 sets × 5 sessions / 2 patterns = 7.5 → below 10 min → warning
+    // 4 sets × 5 sessions / 2 patterns = 10 → exactly at min → no warning
+    const warnings = validateWeeklyVolume(4, 5, 2, 'HIPERTROFIA');
+    expect(warnings).toHaveLength(0);
+  });
+
+  test('warns when volume is insufficient for HIPERTROFIA', () => {
+    // 2 sets × 3 sessions / 7 patterns = 0.86 < 10 → warning
+    const warnings = validateWeeklyVolume(2, 3, 7, 'HIPERTROFIA');
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings[0]).toContain('HIPERTROFIA');
+    expect(warnings[0]).toContain('séries/padrão/semana');
+  });
+
+  test('returns no warning when volume meets SAUDE_GERAL minimum (min: 2)', () => {
+    // 2 sets × 2 sessions / 2 patterns = 2 ≥ 2 → no warning
+    const warnings = validateWeeklyVolume(2, 2, 2, 'SAUDE_GERAL');
+    expect(warnings).toHaveLength(0);
+  });
+
+  test('returns no warning when volume exceeds FORCA minimum', () => {
+    // 4 sets × 3 sessions / 2 patterns = 6 ≥ 4 → no warning
+    const warnings = validateWeeklyVolume(4, 3, 2, 'FORCA');
+    expect(warnings).toHaveLength(0);
+  });
+
+  test('returns empty array when activePatternCount is 0', () => {
+    const warnings = validateWeeklyVolume(3, 3, 0, 'HIPERTROFIA');
+    expect(warnings).toHaveLength(0);
+  });
+
+  test('returns empty array when setsPerSession is 0', () => {
+    const warnings = validateWeeklyVolume(0, 3, 4, 'HIPERTROFIA');
+    expect(warnings).toHaveLength(0);
+  });
+
+  test('warning message includes estimated and minimum sets', () => {
+    const warnings = validateWeeklyVolume(1, 2, 5, 'HIPERTROFIA');
+    expect(warnings[0]).toMatch(/\d+ séries\/padrão\/semana/);
+    expect(warnings[0]).toContain('10 séries/padrão/semana');
+  });
+});
+
+// ─── validateCardioZone ───────────────────────────────────────────────────────
+
+describe('validateCardioZone', () => {
+  const zones: KarvonenZonesInput = {
+    z1: { low: 110, high: 125 },
+    z2: { low: 125, high: 148 },
+    z3: { low: 148, high: 170 },
+  };
+
+  test('returns no warning for valid INICIANTE phase 1 zone (z1)', () => {
+    const warnings = validateCardioZone(112, 122, zones, 'INICIANTE', 1);
+    expect(warnings).toHaveLength(0);
+  });
+
+  test('warns when FC low is below z1 minimum for INICIANTE phase 1', () => {
+    const warnings = validateCardioZone(100, 120, zones, 'INICIANTE', 1);
+    expect(warnings.some((w) => w.includes('FC mínima'))).toBe(true);
+  });
+
+  test('warns when FC high exceeds z1 maximum for INICIANTE phase 1 (no Z3 allowed)', () => {
+    const warnings = validateCardioZone(112, 175, zones, 'INICIANTE', 1);
+    expect(warnings.some((w) => w.includes('FC máxima'))).toBe(true);
+  });
+
+  test('does not warn when FC high is within z3 for a phase that allows Z3', () => {
+    // INICIANTE phase 3 allows Z3 (z3.high = 170)
+    const warnings = validateCardioZone(130, 165, zones, 'INICIANTE', 3);
+    expect(warnings).toHaveLength(0);
+  });
+
+  test('warns when FC high exceeds z3 even in a phase that allows Z3', () => {
+    const warnings = validateCardioZone(130, 180, zones, 'INICIANTE', 3);
+    expect(warnings.some((w) => w.includes('FC máxima'))).toBe(true);
+  });
+
+  test('returns no warning for unknown level/phase combination', () => {
+    const warnings = validateCardioZone(100, 200, zones, 'INICIANTE', 99);
+    expect(warnings).toHaveLength(0);
+  });
+
+  test('applies 5 bpm tolerance — borderline values do not warn', () => {
+    // z1.low = 110, tolerance = 5 → low must be < 105 to warn
+    const warningsOk = validateCardioZone(106, 122, zones, 'INICIANTE', 1);
+    expect(warningsOk).toHaveLength(0);
+    const warningsFail = validateCardioZone(104, 122, zones, 'INICIANTE', 1);
+    expect(warningsFail.some((w) => w.includes('FC mínima'))).toBe(true);
+  });
+
+  test('warning includes level, phase, and bpm values', () => {
+    const warnings = validateCardioZone(90, 120, zones, 'INTERMEDIO', 1);
+    expect(warnings[0]).toContain('INTERMEDIO');
+    expect(warnings[0]).toContain('Fase 1');
+    expect(warnings[0]).toContain('90 bpm');
+  });
+});
+
+// ─── validatePatternSelection ─────────────────────────────────────────────────
+
+describe('validatePatternSelection', () => {
+  test('returns no warning when all POTENCIA patterns are present', () => {
+    const warnings = validatePatternSelection(
+      ['DOMINANTE_JOELHO', 'DOMINANTE_ANCA', 'LOCOMOCAO'],
+      'POTENCIA',
+    );
+    expect(warnings).toHaveLength(0);
+  });
+
+  test('warns when HIPERTROFIA is missing CORE and EMPURRAR_VERTICAL', () => {
+    const warnings = validatePatternSelection(
+      ['DOMINANTE_JOELHO', 'DOMINANTE_ANCA', 'EMPURRAR_HORIZONTAL', 'PUXAR_HORIZONTAL', 'PUXAR_VERTICAL'],
+      'HIPERTROFIA',
+    );
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings[0]).toContain('core');
+    expect(warnings[0]).toContain('empurrar vertical');
+  });
+
+  test('returns no warning when all FORCA patterns are present', () => {
+    const warnings = validatePatternSelection(
+      ['DOMINANTE_JOELHO', 'DOMINANTE_ANCA', 'EMPURRAR_HORIZONTAL', 'PUXAR_VERTICAL'],
+      'FORCA',
+    );
+    expect(warnings).toHaveLength(0);
+  });
+
+  test('does not warn for clinically excluded pattern', () => {
+    // evitar_joelho excludes DOMINANTE_JOELHO → should not appear in warning
+    const warnings = validatePatternSelection(
+      ['DOMINANTE_ANCA', 'LOCOMOCAO'],
+      'POTENCIA',
+      ['evitar_joelho'],
+    );
+    expect(warnings).toHaveLength(0);
+  });
+
+  test('still warns for non-excluded missing patterns despite clinical flags', () => {
+    // evitar_joelho only excludes DOMINANTE_JOELHO — LOCOMOCAO is still required
+    const warnings = validatePatternSelection(
+      ['DOMINANTE_ANCA'],
+      'POTENCIA',
+      ['evitar_joelho'],
+    );
+    expect(warnings.some((w) => w.includes('locomoção'))).toBe(true);
+  });
+
+  test('returns no warning for empty selections when all patterns are clinically excluded', () => {
+    // POTENCIA requires DOMINANTE_JOELHO, DOMINANTE_ANCA, LOCOMOCAO
+    // evitar_joelho excludes DOMINANTE_JOELHO, evitar_lombar excludes DOMINANTE_ANCA
+    // So LOCOMOCAO is still required — expect a warning
+    const warnings = validatePatternSelection(
+      [],
+      'POTENCIA',
+      ['evitar_joelho', 'evitar_lombar'],
+    );
+    expect(warnings.some((w) => w.includes('locomoção'))).toBe(true);
+  });
+
+  test('handles empty flags array', () => {
+    const warnings = validatePatternSelection([], 'SAUDE_GERAL', []);
+    expect(warnings.length).toBeGreaterThan(0);
+  });
+
+  test('warning message includes objective name', () => {
+    const warnings = validatePatternSelection([], 'RESISTENCIA');
+    expect(warnings[0]).toContain('RESISTENCIA');
+  });
+
+  test('warning uses Portuguese pattern labels', () => {
+    const warnings = validatePatternSelection([], 'FORCA');
+    expect(warnings[0]).toMatch(/dominante de joelho|dominante de anca|empurrar|puxar/);
   });
 });
 

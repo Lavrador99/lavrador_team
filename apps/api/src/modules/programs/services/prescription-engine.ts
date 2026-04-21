@@ -1,4 +1,10 @@
 import { MovementPattern, TrainingLevel } from "@prisma/client";
+import {
+  mapObjectiveToAcsm,
+  ACSM_GUIDELINES,
+  validatePatternSelection,
+  validateWeeklyVolume,
+} from "../../suggestion/services/acsm-guidelines.engine";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,7 +49,13 @@ export interface AssessmentEngineInput {
 
 // ─── Main generator ──────────────────────────────────────────────────────────
 
-export function generatePrescriptionPlan(input: AssessmentEngineInput) {
+export interface PrescriptionPlanResult {
+  // Stored as JSON in Postgres — typed loosely to accept any phase structure
+  phases: unknown[];
+  validationWarnings: string[];
+}
+
+export function generatePrescriptionPlan(input: AssessmentEngineInput): PrescriptionPlanResult {
   const { level, data, selectedExercises } = input;
   const { diasSemana, duracaoSessao, objetivo, fcRep = 70 } = data;
 
@@ -70,8 +82,28 @@ export function generatePrescriptionPlan(input: AssessmentEngineInput) {
     requiredByPattern,
   );
 
+  // ─── ACSM 2026 Validations ────────────────────────────────────────────────
+  const acsmObjective = mapObjectiveToAcsm(objetivo);
+  const clinicalFlags = data.lesoes ?? [];
+  const uniquePatterns = [...new Set(selectedExercises.map((e) => e.pattern as string))];
+
+  const patternWarnings = validatePatternSelection(uniquePatterns, acsmObjective, clinicalFlags);
+
+  const setsPerSession = ACSM_GUIDELINES[acsmObjective].sets.min;
+  const volumeWarnings = validateWeeklyVolume(
+    setsPerSession,
+    diasSemana,
+    uniquePatterns.length,
+    acsmObjective,
+  );
+
+  const validationWarnings = [...patternWarnings, ...volumeWarnings];
+  // ─────────────────────────────────────────────────────────────────────────
+
+  let phases: unknown[];
+
   if (level === TrainingLevel.INICIANTE) {
-    return buildIniciantePhases({
+    phases = buildIniciantePhases({
       dias,
       duracaoSessao,
       objetivo,
@@ -82,9 +114,8 @@ export function generatePrescriptionPlan(input: AssessmentEngineInput) {
       rm1Bench,
       exerciseBlock,
     });
-  }
-  if (level === TrainingLevel.INTERMEDIO) {
-    return buildIntermedioPhases({
+  } else if (level === TrainingLevel.INTERMEDIO) {
+    phases = buildIntermedioPhases({
       dias,
       duracaoSessao,
       objetivo,
@@ -95,18 +126,21 @@ export function generatePrescriptionPlan(input: AssessmentEngineInput) {
       rm1Bench,
       exerciseBlock,
     });
+  } else {
+    phases = buildAvancadoPhases({
+      dias,
+      objetivo,
+      z1,
+      z2,
+      z3,
+      rm1Squat,
+      rm1Bench,
+      exerciseBlock,
+      duracaoSessao,
+    });
   }
-  return buildAvancadoPhases({
-    dias,
-    objetivo,
-    z1,
-    z2,
-    z3,
-    rm1Squat,
-    rm1Bench,
-    exerciseBlock,
-    duracaoSessao,
-  });
+
+  return { phases, validationWarnings };
 }
 
 // ─── Exercise block builder (80/20) ──────────────────────────────────────────
