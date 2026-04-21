@@ -22,6 +22,7 @@ export class ExercisesService {
       equipment,
       muscle: filtersDto.muscle,
       search: filtersDto.search,
+      showAll: filtersDto.showAll,
     });
   }
 

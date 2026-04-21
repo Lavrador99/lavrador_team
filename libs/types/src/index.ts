@@ -72,15 +72,9 @@ export type MovementPattern =
   | "locomocao";
 
 export type Equipment =
-  | "barra"
-  | "halteres"
-  | "rack"
-  | "maquinas"
-  | "cabo"
-  | "kettlebell"
-  | "peso_corporal"
-  | "banco"
-  | "cardio_eq";
+  | "BARRA" | "HALTERES" | "RACK" | "MAQUINAS" | "CABO"
+  | "KETTLEBELL" | "PESO_CORPORAL" | "BANCO" | "CARDIO_EQ"
+  | "SMITH" | "RESISTANCE_BAND" | "PARALELAS" | "BARRA_FIXA" | "FOAM_ROLLER";
 
 export interface ExerciseDto {
   id: string;
@@ -93,6 +87,7 @@ export interface ExerciseDto {
   gifUrl?: string;
   videoUrl?: string;
   clinicalNotes?: string[];
+  isActive?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

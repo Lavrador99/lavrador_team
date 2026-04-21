@@ -7,6 +7,7 @@ export interface ExerciseFilters {
   equipment?: string;
   muscle?: string;
   search?: string;
+  showAll?: boolean;
 }
 
 export const exercisesApi = {

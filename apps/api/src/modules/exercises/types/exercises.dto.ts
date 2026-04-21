@@ -2,6 +2,7 @@ import {
   IsString, IsEnum, IsArray, IsOptional,
   IsBoolean, IsUrl, MinLength,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { MovementPattern, Equipment, TrainingLevel } from '@prisma/client';
 
 export class CreateExerciseDto {
@@ -106,4 +107,9 @@ export class ExerciseFiltersDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  showAll?: boolean;
 }

@@ -9,6 +9,7 @@ interface ExerciseFilters {
   equipment?: Equipment[];
   muscle?: string;
   search?: string;
+  showAll?: boolean;
 }
 
 @Injectable()
@@ -16,11 +17,11 @@ export class ExercisesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(filters: ExerciseFilters = {}) {
-    const { pattern, level, equipment, muscle, search } = filters;
+    const { pattern, level, equipment, muscle, search, showAll } = filters;
 
     return this.prisma.exercise.findMany({
       where: {
-        isActive: true,
+        ...(showAll ? {} : { isActive: true }),
         ...(pattern && { pattern }),
         ...(level && { level }),
         ...(equipment?.length && { equipment: { hasSome: equipment } }),
