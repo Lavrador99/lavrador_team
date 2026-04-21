@@ -5,6 +5,7 @@ import { ExercisesService } from "../../exercises/services/exercises.service";
 import { ProgramsRepository } from "../repositories/programs.repository";
 import { GenerateProgramDto, UpdateSelectionsDto } from "../types/programs.dto";
 import { generatePrescriptionPlan } from "./prescription-engine";
+import { PrismaService } from "../../prisma/prisma.service";
 
 @Injectable()
 export class ProgramsService {
@@ -12,6 +13,7 @@ export class ProgramsService {
     private readonly repo: ProgramsRepository,
     private readonly assessmentsService: AssessmentsService,
     private readonly exercisesService: ExercisesService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async generate(dto: GenerateProgramDto) {
@@ -84,6 +86,28 @@ export class ProgramsService {
         type: s.type,
       })),
     );
+  }
+
+  async clone(id: string, targetClientId: string, name?: string) {
+    const source = await this.findById(id);
+    const cloneName = name ?? `${source.name} (cópia)`;
+
+    return this.prisma.program.create({
+      data: {
+        clientId:    targetClientId,
+        assessmentId: source.assessmentId,
+        name:        cloneName,
+        phases:      source.phases as any,
+        exerciseSelections: {
+          create: source.exerciseSelections.map((s: any) => ({
+            exerciseId: s.exerciseId,
+            pattern:    s.pattern,
+            type:       s.type,
+          })),
+        },
+      },
+      include: { exerciseSelections: { include: { exercise: true } } },
+    });
   }
 
   async exportJson(id: string) {

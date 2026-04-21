@@ -50,4 +50,8 @@ export const programsApi = {
     await api.delete(`/programs/${id}`);
   },
   exportJson: (id: string): string => `/api/programs/${id}/export`,
+  clone: async (id: string, clientId: string, name?: string): Promise<ProgramDto> => {
+    const { data } = await api.post(`/programs/${id}/clone`, { clientId, name });
+    return data;
+  },
 };

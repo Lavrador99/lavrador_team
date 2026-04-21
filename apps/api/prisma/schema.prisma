@@ -170,8 +170,9 @@ model Client {
   invoices        Invoice[]
   habits          Habit[]
   progressPhotos  ProgressPhoto[]
-  mealPlans       MealPlan[]
-  metrics         ClientMetrics?
+  mealPlans        MealPlan[]
+  metrics          ClientMetrics?
+  bodyMeasurements BodyMeasurement[]
 
   @@map("clients")
 }
@@ -595,4 +596,31 @@ model PushSubscription {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("push_subscriptions")
+}
+
+// ─────────────────────────────────────────
+// BODY MEASUREMENTS
+// ─────────────────────────────────────────
+
+model BodyMeasurement {
+  id         String   @id @default(cuid())
+  clientId   String
+  recordedAt DateTime @default(now())
+  peso       Float?
+  altura     Float?
+  pctGordura Float?
+  massaMagra Float?
+  cc         Float?
+  cq         Float?
+  cBraco     Float?
+  cCoxa      Float?
+  fcRep      Int?
+  pas        Int?
+  pad        Int?
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("body_measurements")
 }

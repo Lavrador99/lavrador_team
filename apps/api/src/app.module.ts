@@ -24,6 +24,7 @@ import { WorkoutTemplatesModule } from './modules/workout-templates/workout-temp
 import { ProgressPhotosModule } from './modules/progress-photos/progress-photos.module';
 import { NutritionModule } from './modules/nutrition/nutrition.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { BodyMeasurementsModule } from './modules/body-measurements/body-measurements.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     ProgressPhotosModule,
     NutritionModule,
     NotificationsModule,
+    BodyMeasurementsModule,
   ],
 })
 export class AppModule {}
