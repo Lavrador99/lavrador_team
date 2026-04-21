@@ -29,6 +29,8 @@ import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { AchievementsModule } from './modules/achievements/achievements.module';
 import { ReadinessModule } from './modules/readiness/readiness.module';
 import { AutomationsModule } from './modules/automations/automations.module';
+import { PainReportsModule } from './modules/pain-reports/pain-reports.module';
+import { FormChecksModule } from './modules/form-checks/form-checks.module';
 
 @Module({
   imports: [
@@ -72,6 +74,8 @@ import { AutomationsModule } from './modules/automations/automations.module';
     AchievementsModule,
     ReadinessModule,
     AutomationsModule,
+    PainReportsModule,
+    FormChecksModule,
   ],
 })
 export class AppModule {}

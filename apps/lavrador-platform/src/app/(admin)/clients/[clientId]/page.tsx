@@ -20,7 +20,7 @@ import {
   LEVEL_STYLE,
 } from '../../../../lib/constants/styles';
 
-type Tab = 'overview' | 'programs' | 'sessions' | 'assessments' | 'fotos' | 'habitos' | 'pagamentos' | 'timeline';
+type Tab = 'overview' | 'programs' | 'sessions' | 'assessments' | 'fotos' | 'habitos' | 'pagamentos' | 'timeline' | 'dor' | 'forma';
 
 const PATTERN_LABEL: Record<string, string> = {
   EMPURRAR_HORIZONTAL: 'Peito',
@@ -114,6 +114,8 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'habitos',     label: 'Hábitos',     icon: 'check_circle' },
   { id: 'pagamentos',  label: 'Pagamentos',  icon: 'payments' },
   { id: 'timeline',    label: 'Timeline',    icon: 'timeline' },
+  { id: 'dor',         label: 'Dores',       icon: 'report' },
+  { id: 'forma',       label: 'Forma',       icon: 'videocam' },
 ];
 
 export default function ClientDetailPage() {
@@ -135,14 +137,48 @@ export default function ClientDetailPage() {
   const { data: invoices = [] } = useSWR(tab === 'pagamentos' && clientId ? `invoices-${clientId}` : null, () => invoicesApi.getAll(clientId!));
   const { data: habits = [], mutate: mutateHabits } = useSWR(tab === 'habitos' && clientId ? `habits-${clientId}` : null, () => habitsApi.getByClient(clientId!));
   const { data: photos = [], mutate: mutatePhotos } = useSWR(tab === 'fotos' && clientId ? `photos-${clientId}` : null, () => progressPhotosApi.getByClient(clientId!));
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
   const { data: recentReadiness = [] } = useSWR(
     tab === 'overview' && clientId ? `readiness-${clientId}` : null,
-    () => fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'}/api/readiness/client/${clientId}?limit=3`, { credentials: 'include' }).then((r) => r.json()),
+    () => fetch(`${API_BASE}/api/readiness/client/${clientId}?limit=3`, { credentials: 'include' }).then((r) => r.json()),
   );
   const { data: achievements = [] } = useSWR(
     tab === 'overview' && clientId ? `achievements-${clientId}` : null,
-    () => fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'}/api/achievements/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+    () => fetch(`${API_BASE}/api/achievements/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
   );
+  const { data: painReports = [], mutate: mutatePain } = useSWR(
+    tab === 'dor' && clientId ? `pain-${clientId}` : null,
+    () => fetch(`${API_BASE}/api/pain-reports/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+  );
+  const { data: formChecks = [], mutate: mutateFormChecks } = useSWR(
+    tab === 'forma' && clientId ? `form-checks-${clientId}` : null,
+    () => fetch(`${API_BASE}/api/form-checks/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+  );
+  const [feedbackInputs, setFeedbackInputs] = useState<Record<string, string>>({});
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+
+  async function resolvePain(id: string) {
+    await fetch(`${API_BASE}/api/pain-reports/${id}/resolve`, { method: 'PATCH', credentials: 'include' });
+    mutatePain();
+  }
+
+  async function submitFormReview(id: string) {
+    const feedback = feedbackInputs[id];
+    if (!feedback?.trim()) return;
+    setReviewingId(id);
+    try {
+      await fetch(`${API_BASE}/api/form-checks/${id}/review`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ptFeedback: feedback }),
+      });
+      mutateFormChecks();
+      setFeedbackInputs((prev) => { const n = { ...prev }; delete n[id]; return n; });
+    } finally {
+      setReviewingId(null);
+    }
+  }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -669,6 +705,93 @@ export default function ClientDetailPage() {
                     {a.flags.map((f) => (
                       <span key={f} className="label-category text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">{f}</span>
                     ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Pain Reports */}
+      {tab === 'dor' && (
+        <div className="space-y-3">
+          {!Array.isArray(painReports) || painReports.length === 0 ? (
+            <EmptyState icon="report" title="Sem reportes de dor." />
+          ) : (
+            (painReports as any[]).map((r) => {
+              const intensityColor = ({ MILD: 'text-amber-400 bg-amber-400/10', MODERATE: 'text-orange-400 bg-orange-400/10', SEVERE: 'text-red-400 bg-red-400/10' } as Record<string,string>)[r.intensity] ?? '';
+              return (
+                <div key={r.id} className={`bg-surface-container-lowest rounded-xl p-4 ${r.resolvedAt ? 'opacity-60' : ''}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-headline font-bold text-sm text-on-surface">{r.bodyPart}</div>
+                      <div className="font-label text-xs text-secondary mt-0.5">
+                        {new Date(r.createdAt).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' })}
+                      </div>
+                      {r.description && <p className="font-label text-xs text-secondary mt-1">{r.description}</p>}
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className={`font-label text-xs font-bold px-2 py-1 rounded-full ${intensityColor}`}>
+                        {({ MILD: 'Leve', MODERATE: 'Moderada', SEVERE: 'Severa' } as Record<string,string>)[r.intensity]}
+                      </span>
+                      {!r.resolvedAt ? (
+                        <button onClick={() => resolvePain(r.id)} className="font-label text-xs text-primary hover:underline">Marcar resolvida</button>
+                      ) : (
+                        <span className="font-label text-xs text-primary">✓ Resolvida</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Form Checks */}
+      {tab === 'forma' && (
+        <div className="space-y-3">
+          {!Array.isArray(formChecks) || formChecks.length === 0 ? (
+            <EmptyState icon="videocam" title="Sem pedidos de análise de forma." />
+          ) : (
+            (formChecks as any[]).map((c) => (
+              <div key={c.id} className="bg-surface-container-lowest rounded-xl p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div>
+                    <div className="font-headline font-bold text-sm text-on-surface">{c.exerciseName}</div>
+                    <div className="font-label text-xs text-secondary mt-0.5">{new Date(c.createdAt).toLocaleDateString('pt-PT')}</div>
+                  </div>
+                  <span className={`font-label text-xs font-bold px-2 py-1 rounded-full ${c.status === 'REVIEWED' ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-secondary'}`}>
+                    {c.status === 'REVIEWED' ? '✓ Analisado' : '⏳ Pendente'}
+                  </span>
+                </div>
+                {c.notes && <p className="font-label text-xs text-secondary mb-2">{c.notes}</p>}
+                <a href={c.videoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 font-label text-xs text-primary hover:underline mb-3">
+                  <span className="material-symbols-outlined text-sm">play_circle</span>Ver vídeo
+                </a>
+                {c.ptFeedback && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 mb-3">
+                    <p className="font-label text-xs text-primary font-bold mb-1">Feedback</p>
+                    <p className="font-body text-sm text-on-surface">{c.ptFeedback}</p>
+                  </div>
+                )}
+                {c.status === 'PENDING' && (
+                  <div className="space-y-2">
+                    <textarea
+                      value={feedbackInputs[c.id] ?? ''}
+                      onChange={(e) => setFeedbackInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                      placeholder="Escreve o feedback para o cliente..."
+                      rows={2}
+                      className="w-full bg-surface-container-high border-none rounded-xl px-3 py-2 text-sm text-on-surface placeholder:text-outline resize-none outline-none"
+                    />
+                    <button
+                      onClick={() => submitFormReview(c.id)}
+                      disabled={!feedbackInputs[c.id]?.trim() || reviewingId === c.id}
+                      className="kinetic-gradient text-on-primary font-label font-bold text-xs px-4 py-2 rounded-lg disabled:opacity-40"
+                    >
+                      {reviewingId === c.id ? 'A enviar...' : 'Enviar feedback'}
+                    </button>
                   </div>
                 )}
               </div>
