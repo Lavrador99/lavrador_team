@@ -10,14 +10,16 @@ import { invoicesApi, InvoiceDto } from '../../../../lib/api/invoices.api';
 import { habitsApi } from '../../../../lib/api/habits.api';
 import { progressPhotosApi, ProgressPhoto } from '../../../../lib/api/progress-photos.api';
 import { statsApi } from '../../../../lib/api/stats.api';
+import { bodyMeasurementsApi } from '../../../../lib/api/body-measurements.api';
 import { EmptyState } from '../../../../components/ui';
+import { ClientTimeline } from '../../../../components/clients/ClientTimeline';
 import {
   INVOICE_STATUS_STYLE, INVOICE_STATUS_LABEL,
   SESSION_STATUS_LABEL, SESSION_STATUS_STYLE, SESSION_TYPE_LABEL,
   LEVEL_STYLE,
 } from '../../../../lib/constants/styles';
 
-type Tab = 'overview' | 'programs' | 'sessions' | 'assessments' | 'fotos' | 'habitos' | 'pagamentos';
+type Tab = 'overview' | 'programs' | 'sessions' | 'assessments' | 'fotos' | 'habitos' | 'pagamentos' | 'timeline';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'overview',    label: 'Visão geral', icon: 'person' },
@@ -27,6 +29,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'fotos',       label: 'Fotos',       icon: 'photo_camera' },
   { id: 'habitos',     label: 'Hábitos',     icon: 'check_circle' },
   { id: 'pagamentos',  label: 'Pagamentos',  icon: 'payments' },
+  { id: 'timeline',    label: 'Timeline',    icon: 'timeline' },
 ];
 
 export default function ClientDetailPage() {
@@ -38,6 +41,7 @@ export default function ClientDetailPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [newHabitName, setNewHabitName] = useState('');
   const [savingHabit, setSavingHabit] = useState(false);
+  const [cloningId, setCloningId] = useState<string | null>(null);
 
   const { data: client } = useSWR(clientId ? `client-${clientId}` : null, () => clientsApi.getDetail(clientId!));
   const { data: stats } = useSWR(clientId ? `stats-${clientId}` : null, () => statsApi.getClient(clientId!));
@@ -84,6 +88,15 @@ export default function ClientDetailPage() {
     if (!window.confirm('Eliminar este plano?')) return;
     await programsApi.delete(id);
     mutatePrograms();
+  }
+
+  async function handleCloneProgram(id: string) {
+    if (!clientId) return;
+    setCloningId(id);
+    try {
+      await programsApi.clone(id, clientId);
+      mutatePrograms();
+    } finally { setCloningId(null); }
   }
 
   if (!client) {
@@ -253,6 +266,14 @@ export default function ClientDetailPage() {
                     Treinos
                   </button>
                   <button
+                    onClick={() => handleCloneProgram(p.id)}
+                    disabled={cloningId === p.id}
+                    className="font-label font-bold text-xs text-secondary bg-surface-container-high hover:bg-surface-container-highest px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1"
+                    title="Duplicar plano"
+                  >
+                    <span className="material-symbols-outlined text-sm">{cloningId === p.id ? 'hourglass_empty' : 'content_copy'}</span>
+                  </button>
+                  <button
                     onClick={() => handleDeleteProgram(p.id)}
                     className="text-error hover:bg-error/5 p-1.5 rounded-lg transition-colors"
                   >
@@ -404,6 +425,11 @@ export default function ClientDetailPage() {
             })
           )}
         </div>
+      )}
+
+      {/* Timeline */}
+      {tab === 'timeline' && clientId && (
+        <ClientTimeline clientId={clientId} />
       )}
 
       {/* Assessments */}

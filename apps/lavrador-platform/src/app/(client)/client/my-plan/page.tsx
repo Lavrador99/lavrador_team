@@ -100,6 +100,13 @@ export default function MyPlanPage() {
                   {workout.durationEstimatedMin} min
                 </div>
                 <button
+                  onClick={() => router.push(`/client/my-plan/log/${workout.id}/guided`)}
+                  className="text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap active:scale-95 transition-all border border-zinc-700/60 text-zinc-300 bg-zinc-900 flex items-center gap-1"
+                  title="Modo guiado — exercício a exercício"
+                >
+                  <span className="material-symbols-outlined text-sm">list_alt</span>
+                </button>
+                <button
                   onClick={() => router.push(`/client/my-plan/log/${workout.id}`)}
                   className="kinetic-gradient text-on-primary font-headline font-bold text-xs px-4 py-2 rounded-lg whitespace-nowrap active:scale-95 transition-all flex items-center gap-1"
                 >

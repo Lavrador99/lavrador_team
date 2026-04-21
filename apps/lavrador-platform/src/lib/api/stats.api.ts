@@ -26,4 +26,20 @@ export const statsApi = {
     const { data } = await api.get('/stats/clients/activity');
     return data;
   },
+
+  getInsights: async (): Promise<{
+    inactiveClients: { clientId: string; name: string; lastWorkoutDate: string | null; daysSince: number | null }[];
+    weeklyLoad: { day: string; sessions: number }[];
+    expiringPrograms: { programId: string; programName: string; clientId: string; clientName: string; daysLeft: number; endDate: string }[];
+    topStreaks: { clientId: string; name: string; streak: number; totalWorkouts: number }[];
+    upcomingSessionsCount: number;
+  }> => {
+    const { data } = await api.get('/stats/insights');
+    return data;
+  },
+
+  getChurnRisk: async () => {
+    const { data } = await api.get('/stats/churn-risk');
+    return data as { clientId: string; clientName: string; recentAdherencePct: number; previousAdherencePct: number; dropPct: number }[];
+  },
 };

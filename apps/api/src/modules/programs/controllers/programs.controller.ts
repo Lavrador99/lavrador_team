@@ -54,4 +54,14 @@ export class ProgramsController {
     res.setHeader('Content-Disposition', `attachment; filename="program-${id}.json"`);
     res.json(data);
   }
+
+  @Post(':id/clone')
+  @HttpCode(HttpStatus.CREATED)
+  clone(
+    @Param('id') id: string,
+    @Body('clientId') clientId: string,
+    @Body('name') name?: string,
+  ) {
+    return this.programsService.clone(id, clientId, name);
+  }
 }

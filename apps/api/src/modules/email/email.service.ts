@@ -66,4 +66,27 @@ export class EmailService {
     const { subject, html } = inactivityAlertTemplate(data);
     return this.send(to, subject, html);
   }
+
+  async sendCheckinEmail(to: string, data: {
+    clientName: string;
+    streak: number;
+    totalWorkouts: number;
+    checkinUrl: string;
+  }) {
+    const streakMsg = data.streak > 0 ? `🔥 ${data.streak} dias consecutivos!` : '';
+    const html = `
+      <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;background:#0a0a0f;color:#f4f4f5;border-radius:16px;">
+        <h2 style="color:#c8f542;margin-bottom:8px;">Check-in semanal 💪</h2>
+        <p style="color:#a1a1aa;">Olá, <strong style="color:#fff;">${data.clientName}</strong>!</p>
+        <p style="color:#a1a1aa;">Como correu esta semana de treino? ${streakMsg}</p>
+        ${data.totalWorkouts > 0 ? `<p style="color:#a1a1aa;">Tens <strong style="color:#84d4d3;">${data.totalWorkouts} treinos</strong> no total — continua assim!</p>` : ''}
+        <p style="color:#a1a1aa;">Partilha as tuas sensações com o teu PT:</p>
+        <a href="${data.checkinUrl}" style="display:inline-block;margin-top:12px;padding:12px 24px;background:#c8f542;color:#0a0a0f;font-weight:700;border-radius:12px;text-decoration:none;">
+          Abrir mensagens →
+        </a>
+        <p style="margin-top:24px;font-size:11px;color:#52525b;">Lavrador Team · A tua plataforma de personal training</p>
+      </div>`;
+
+    return this.send(to, `${data.clientName}, como correu a semana? 💪`, html);
+  }
 }

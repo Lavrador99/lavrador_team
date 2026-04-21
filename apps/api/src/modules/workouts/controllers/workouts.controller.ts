@@ -97,6 +97,14 @@ export class WorkoutsController {
     return this.workoutsService.getLogsByWorkout(id);
   }
 
+  @Get(":id/last-log")
+  getLastLog(
+    @Param("id") id: string,
+    @CurrentUser("sub") userId: string,
+  ) {
+    return this.workoutsService.getLastLog(id, userId);
+  }
+
   @Post("logs")
   @HttpCode(HttpStatus.CREATED)
   createLog(

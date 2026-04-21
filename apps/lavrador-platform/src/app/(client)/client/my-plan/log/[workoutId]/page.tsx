@@ -5,6 +5,7 @@ import { WorkoutDto, WorkoutBlock, WorkoutLogEntry, SetType, ExerciseDto } from 
 import { workoutsApi } from '../../../../../../lib/api/workouts.api';
 import { exercisesApi } from '../../../../../../lib/api/exercises.api';
 import { cacheWorkout, getCachedWorkout, queuePendingLog, flushPendingLogs, getPendingCount } from '../../../../../../lib/db/workoutDb';
+import { QuickSubstituteModal } from '../../../../../../components/workout/QuickSubstituteModal';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,11 @@ export default function WorkoutLoggerPage() {
   const [exSearch, setExSearch] = useState('');
   const [exLoading, setExLoading] = useState(false);
   const [restSoundActive, setRestSoundActive] = useState(false);
+  const [substituteTarget, setSubstituteTarget] = useState<{ blockId: string; exIdx: number; exerciseId: string; exerciseName: string } | null>(null);
+  const [lastLog, setLastLog] = useState<{
+    date: string;
+    entries: { exerciseId?: string; exerciseName: string; sets: { reps: number; load?: number }[] }[];
+  } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const restRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -151,6 +157,7 @@ export default function WorkoutLoggerPage() {
         const w = await workoutsApi.getById(workoutId);
         setWorkout(w);
         await cacheWorkout(w);
+        workoutsApi.getLastLog(workoutId).then(setLastLog).catch(() => {});
       } catch {
         const cached = await getCachedWorkout(workoutId);
         if (cached) { setWorkout(cached); setOffline(true); }
@@ -397,6 +404,32 @@ export default function WorkoutLoggerPage() {
     return <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] text-sm text-red-400">Treino não encontrado.</div>;
   }
 
+  function handleSubstitute(alt: { exerciseId: string; name: string }) {
+    if (!substituteTarget || !workout) return;
+    const { blockId, exIdx } = substituteTarget;
+    setWorkout((prev) => {
+      if (!prev) return prev;
+      const blocks = prev.blocks.map((b) => {
+        if (b.id !== blockId) return b;
+        const exercises = b.exercises.map((ex, i) => {
+          if (i !== exIdx) return ex;
+          return { ...ex, exerciseId: alt.exerciseId, exerciseName: alt.name };
+        });
+        return { ...b, exercises };
+      });
+      return { ...prev, blocks };
+    });
+    setSubstituteTarget(null);
+  }
+
+  function getPrevSets(exerciseId: string | undefined, exerciseName: string) {
+    if (!lastLog) return null;
+    const entry = lastLog.entries.find(
+      (e) => (exerciseId && e.exerciseId === exerciseId) || e.exerciseName === exerciseName,
+    );
+    return entry?.sets ?? null;
+  }
+
   // Progress: completed sets / total sets
   const totalSets = workout.blocks.reduce((acc, b) => acc + b.exercises.reduce((a, e) => a + e.sets, 0), 0);
   const doneSets = Object.values(sets).reduce((acc, arr) => acc + arr.filter((s) => s.completed).length, 0);
@@ -497,6 +530,7 @@ export default function WorkoutLoggerPage() {
             const exSets = sets[key] ?? [];
             const completedCount = exSets.filter((s) => s.completed).length;
             const allDone = completedCount === exSets.length && exSets.length > 0;
+            const prevSets = getPrevSets(ex.exerciseId ?? ex.id, ex.exerciseName);
 
             return (
               <div key={ex.id}
@@ -509,11 +543,33 @@ export default function WorkoutLoggerPage() {
                       {ex.exerciseName}
                     </div>
                     {ex.notes && <div className="text-[11px] text-zinc-400 mt-0.5 italic truncate">{ex.notes}</div>}
+                    {prevSets && prevSets.length > 0 && (
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">anterior:</span>
+                        {prevSets.slice(0, 4).map((s, i) => (
+                          <span key={i} className="text-[10px] text-zinc-400 bg-zinc-800/80 px-1.5 py-0.5 rounded-md tabular-nums">
+                            {s.reps}r{s.load ? ` × ${s.load}kg` : ''}
+                          </span>
+                        ))}
+                        {prevSets.length > 4 && (
+                          <span className="text-[9px] text-zinc-600">+{prevSets.length - 4}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 ml-3">
                     <span className="text-[10px] font-bold uppercase text-zinc-300 bg-zinc-800 px-2 py-1 rounded-lg">
                       {ex.sets}× {ex.reps}
                     </span>
+                    {!allDone && (
+                      <button
+                        onClick={() => setSubstituteTarget({ blockId: block.id, exIdx, exerciseId: ex.exerciseId ?? ex.id, exerciseName: ex.exerciseName })}
+                        className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/60 flex items-center justify-center active:scale-90 transition-all"
+                        title="Substituir exercício"
+                      >
+                        <span className="material-symbols-outlined text-sm text-zinc-400">swap_horiz</span>
+                      </button>
+                    )}
                     {allDone && (
                       <span className="material-symbols-outlined text-[#84d4d3] text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                     )}
@@ -630,6 +686,16 @@ export default function WorkoutLoggerPage() {
           {submitting ? 'A guardar...' : 'Terminar treino'}
         </button>
       </div>
+
+      {/* ── Quick substitute modal ──────────────────────────────────────────── */}
+      {substituteTarget && (
+        <QuickSubstituteModal
+          exerciseId={substituteTarget.exerciseId}
+          exerciseName={substituteTarget.exerciseName}
+          onSelect={handleSubstitute}
+          onClose={() => setSubstituteTarget(null)}
+        />
+      )}
 
       {/* ── Exercises panel overlay ─────────────────────────────────────────── */}
       {showExercises && (

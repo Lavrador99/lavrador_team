@@ -1,4 +1,6 @@
 //@ts-check
+const { withSentryConfig } = require('@sentry/nextjs');
+
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -11,4 +13,15 @@ const nextConfig = {
   experimental: {},
 };
 
-module.exports = withPWA(nextConfig);
+const sentryOptions = {
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  widenClientFileUpload: true,
+  hideSourceMaps: true,
+  disableLogger: true,
+};
+
+module.exports = process.env.NEXT_PUBLIC_SENTRY_DSN
+  ? withSentryConfig(withPWA(nextConfig), sentryOptions)
+  : withPWA(nextConfig);

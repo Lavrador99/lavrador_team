@@ -1,9 +1,12 @@
 import { Controller, Get, Param, Req, UseGuards } from "@nestjs/common";
+import { ThrottlerGuard } from "@nestjs/throttler";
 import { JwtGuard } from "../../../common/guards/jwt.guard";
 import { RolesGuard } from "../../../common/guards/roles.guard";
 import { StatsService } from "../services/stats.service";
+import { ThrottleHeavy } from "../../../common/decorators/throttle.decorator";
 
-@UseGuards(JwtGuard, RolesGuard)
+@UseGuards(JwtGuard, RolesGuard, ThrottlerGuard)
+@ThrottleHeavy()
 @Controller("stats")
 export class StatsController {
   constructor(private readonly statsService: StatsService) {}
@@ -37,5 +40,10 @@ export class StatsController {
   @Get("churn-risk")
   getChurnRisk() {
     return this.statsService.getChurnRiskClients();
+  }
+
+  @Get("insights")
+  getInsights() {
+    return this.statsService.getPtInsights();
   }
 }

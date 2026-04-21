@@ -45,4 +45,16 @@ export class UsersController {
     if (!client) throw new NotFoundException("Cliente não encontrado");
     return client;
   }
+
+  @Get("clients/:clientId/timeline")
+  @Roles("ADMIN")
+  getClientTimeline(@Param("clientId") clientId: string) {
+    return this.usersService.getClientTimeline(clientId, 30);
+  }
+
+  @Get("clients/:clientId/clinical-summary")
+  @Roles("ADMIN")
+  getClientClinicalSummary(@Param("clientId") clientId: string) {
+    return this.usersService.getClientClinicalSummary(clientId);
+  }
 }

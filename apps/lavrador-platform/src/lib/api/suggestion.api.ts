@@ -74,4 +74,12 @@ export const suggestionApi = {
     const { data } = await api.post('/suggestions/validate', body);
     return data;
   },
+
+  getAlternatives: async (exerciseId: string, flags: string[] = [], limit = 6) => {
+    const params = new URLSearchParams();
+    if (flags.length) params.set('flags', flags.join(','));
+    params.set('limit', String(limit));
+    const { data } = await api.get(`/suggestions/alternatives/${exerciseId}?${params}`);
+    return data as { exerciseId: string; name: string; pattern: string; primaryMuscles: string[]; score: number }[];
+  },
 };

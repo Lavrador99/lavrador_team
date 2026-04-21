@@ -111,10 +111,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  refreshTokens  RefreshToken[]
-  client         Client?
-  sentMessages   Message[] @relation("SentMessages")
-  receivedMessages Message[] @relation("ReceivedMessages")
+  refreshTokens     RefreshToken[]
+  client            Client?
+  sentMessages      Message[]          @relation("SentMessages")
+  receivedMessages  Message[]          @relation("ReceivedMessages")
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -169,8 +170,9 @@ model Client {
   invoices        Invoice[]
   habits          Habit[]
   progressPhotos  ProgressPhoto[]
-  mealPlans       MealPlan[]
-  metrics         ClientMetrics?
+  mealPlans        MealPlan[]
+  metrics          ClientMetrics?
+  bodyMeasurements BodyMeasurement[]
 
   @@map("clients")
 }
@@ -581,4 +583,44 @@ model MealPlanMeal {
   day MealPlanDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
 
   @@map("meal_plan_meals")
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
+}
+
+// ─────────────────────────────────────────
+// BODY MEASUREMENTS
+// ─────────────────────────────────────────
+
+model BodyMeasurement {
+  id         String   @id @default(cuid())
+  clientId   String
+  recordedAt DateTime @default(now())
+  peso       Float?
+  altura     Float?
+  pctGordura Float?
+  massaMagra Float?
+  cc         Float?
+  cq         Float?
+  cBraco     Float?
+  cCoxa      Float?
+  fcRep      Int?
+  pas        Int?
+  pad        Int?
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("body_measurements")
 }

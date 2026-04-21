@@ -1,10 +1,13 @@
-import { Controller, Post, Get, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { SuggestionService } from '../services/suggestion.service';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
+import { ThrottleHeavy } from '../../../common/decorators/throttle.decorator';
 
-@UseGuards(JwtGuard, RolesGuard)
+@UseGuards(JwtGuard, RolesGuard, ThrottlerGuard)
+@ThrottleHeavy()
 @Roles('ADMIN')
 @Controller('suggestions')
 export class SuggestionController {
@@ -89,5 +92,16 @@ export class SuggestionController {
     return this.suggestionService.validateManual(
       body.sets, body.reps, body.percentRM, body.objective,
     );
+  }
+
+  // Alternativas rápidas para substituição durante treino
+  @Get('alternatives/:exerciseId')
+  getAlternatives(
+    @Param('exerciseId') exerciseId: string,
+    @Query('flags') flags?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const clientFlags = flags ? flags.split(',').filter(Boolean) : [];
+    return this.suggestionService.getAlternatives(exerciseId, clientFlags, limit ? parseInt(limit) : 6);
   }
 }
