@@ -5,7 +5,12 @@
     "@nestjs/platform-socket.io": "^11.1.18",
     "@nestjs/schedule": "^6.1.1",
     "@nestjs/websockets": "^11.1.18",
+    "bcrypt": "^6.0.0",
     "resend": "^6.10.0",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "stripe": "^22.0.2"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0"
   }
 }

@@ -21,7 +21,7 @@ export class InvoicesService {
       throw new BadRequestException('Stripe não configurado (STRIPE_SECRET_KEY em falta)');
     }
 
-    const stripe = new Stripe(secretKey, { apiVersion: '2025-03-31.basil' });
+    const stripe = new Stripe(secretKey, { apiVersion: '2026-03-25.dahlia' });
     const appUrl = process.env.APP_URL ?? process.env.PLATFORM_URL ?? 'http://localhost:3000';
 
     const session = await stripe.checkout.sessions.create({
@@ -55,9 +55,9 @@ export class InvoicesService {
       return { received: true };
     }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-03-31.basil' });
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2026-03-25.dahlia' });
 
-    let event: Stripe.Event;
+    let event: ReturnType<typeof stripe.webhooks.constructEvent>;
     try {
       event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
     } catch (err) {
@@ -65,7 +65,7 @@ export class InvoicesService {
     }
 
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
+      const session = event.data.object as { metadata?: Record<string, string> | null };
       const invoiceId = session.metadata?.invoiceId;
       if (invoiceId) {
         await this.repo.update(invoiceId, {
