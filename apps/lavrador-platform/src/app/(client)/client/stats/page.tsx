@@ -1,7 +1,57 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { DarkPageHeader, StatGrid } from '../../../../components/client';
 import { useMyStats } from '../../../../lib/hooks/useStats';
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
+const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then((r) => r.json());
+
+interface WeeklyBucket { week: string; volume: number; workouts: number; avgRpe: number | null }
+
+function WeeklyVolumeChart({ data }: { data: WeeklyBucket[] }) {
+  const maxVol = Math.max(...data.map((d) => d.volume), 1);
+  return (
+    <div className="bg-zinc-900 rounded-2xl px-5 py-4 border border-zinc-800/60 mb-4">
+      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-600 mb-3">
+        Volume semanal (kg·reps)
+      </div>
+      <div className="flex items-end gap-1 h-20">
+        {data.map((d, i) => {
+          const h = maxVol > 0 ? Math.max((d.volume / maxVol) * 100, d.volume > 0 ? 4 : 0) : 0;
+          const isLast = i === data.length - 1;
+          return (
+            <div key={d.week} className="flex-1 flex flex-col items-center gap-1">
+              <div
+                className={`w-full rounded-t transition-all ${isLast ? 'bg-[#c8f542]' : 'bg-zinc-700'}`}
+                style={{ height: `${h}%`, minHeight: d.volume > 0 ? 4 : 0 }}
+                title={`${d.week}: ${d.volume.toLocaleString()} kg·reps`}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-1 mt-1">
+        {data.map((d, i) => (
+          <div key={d.week} className={`flex-1 text-center text-[8px] font-bold truncate ${i === data.length - 1 ? 'text-[#c8f542]' : 'text-zinc-600'}`}>
+            {d.week}
+          </div>
+        ))}
+      </div>
+      {data.length > 1 && (() => {
+        const prev = data[data.length - 2].volume;
+        const curr = data[data.length - 1].volume;
+        const pct = prev > 0 ? Math.round(((curr - prev) / prev) * 100) : null;
+        if (pct === null) return null;
+        return (
+          <div className={`mt-2 text-xs font-bold ${pct >= 0 ? 'text-[#c8f542]' : 'text-red-400'}`}>
+            {pct >= 0 ? '↑' : '↓'} {Math.abs(pct)}% vs semana anterior
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
 
 const STAT_LINKS = [
   {
@@ -41,6 +91,10 @@ const STAT_LINKS = [
 export default function StatsHubPage() {
   const router = useRouter();
   const { data: stats } = useMyStats();
+  const { data: weeklyVolume = [] } = useSWR<WeeklyBucket[]>(
+    `${API}/api/stats/my/weekly-volume`,
+    fetcher,
+  );
 
   return (
     <div>
@@ -52,6 +106,10 @@ export default function StatsHubPage() {
           { label: 'Sessões',  value: stats.completedSessions },
           { label: 'Planos',   value: stats.totalPrograms },
         ]} />
+      )}
+
+      {weeklyVolume.some((w) => w.volume > 0) && (
+        <WeeklyVolumeChart data={weeklyVolume} />
       )}
 
       {/* ── Nav links ────────────────────────────────────────────────────────── */}

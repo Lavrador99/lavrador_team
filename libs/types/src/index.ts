@@ -606,3 +606,49 @@ export interface CreateReadinessRequest {
   soreness: number;
   notes?: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAIN REPORTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type PainIntensity = "MILD" | "MODERATE" | "SEVERE";
+
+export interface PainReportDto {
+  id: string;
+  clientId: string;
+  bodyPart: string;
+  intensity: PainIntensity;
+  description?: string;
+  workoutLogId?: string;
+  resolvedAt?: string;
+  createdAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FORM CHECKS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type FormCheckStatus = "PENDING" | "REVIEWED";
+
+export interface FormCheckDto {
+  id: string;
+  clientId: string;
+  exerciseName: string;
+  videoUrl: string;
+  notes?: string;
+  status: FormCheckStatus;
+  ptFeedback?: string;
+  reviewedAt?: string;
+  createdAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEEKLY ANALYTICS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface WeeklyVolumeDto {
+  week: string;
+  volume: number;
+  workouts: number;
+  avgRpe: number | null;
+}

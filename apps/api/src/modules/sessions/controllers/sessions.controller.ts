@@ -1,8 +1,9 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, Query, UseGuards,
+  Param, Body, Query, UseGuards, Res,
   HttpCode, HttpStatus,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { SessionsService } from '../services/sessions.service';
 import { CreateSessionDto, UpdateSessionDto, SessionFiltersDto } from '../types/sessions.dto';
 import { JwtGuard } from '../../../common/guards/jwt.guard';
@@ -50,5 +51,14 @@ export class SessionsController {
   @Get('client/:clientId/stats')
   getStats(@Param('clientId') clientId: string) {
     return this.sessionsService.getStatsForClient(clientId);
+  }
+
+  /** GET /sessions/export/ical — download all SCHEDULED sessions as .ics */
+  @Get('export/ical')
+  async exportIcal(@Res() res: Response) {
+    const ics = await this.sessionsService.exportAsIcal();
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="lavrador-sessions.ics"');
+    res.send(ics);
   }
 }

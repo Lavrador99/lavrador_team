@@ -462,6 +462,170 @@ export class StatsService {
       lastAssessment: c.assessments[0]?.createdAt ?? null,
     }));
   }
+
+  async getWeeklyVolume(userId: string) {
+    const client = await this.prisma.client.findFirst({ where: { userId } });
+    if (!client) return [];
+    return this.getWeeklyVolumeByClientId(client.id);
+  }
+
+  async getLeaderboard() {
+    const metrics = await this.prisma.clientMetrics.findMany({
+      include: { client: true },
+      orderBy: { workoutStreak: 'desc' },
+      take: 20,
+    });
+
+    return metrics.map((m, i) => ({
+      rank: i + 1,
+      // Anonymise: first name + last initial only
+      displayName: m.client.name
+        .split(' ')
+        .map((w, idx) => (idx === 0 ? w : `${w[0]}.`))
+        .join(' '),
+      streak: m.workoutStreak,
+      totalWorkouts: m.totalWorkouts,
+      totalVolumeKg: Math.round(m.totalVolumeKg),
+    }));
+  }
+
+  async getRevenueDashboard() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear  = new Date(now.getFullYear(), 0, 1);
+
+    const [monthPaid, yearPaid, pending, overdue] = await Promise.all([
+      this.prisma.invoice.aggregate({
+        where: { status: 'PAID', paidAt: { gte: startOfMonth } },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.invoice.aggregate({
+        where: { status: 'PAID', paidAt: { gte: startOfYear } },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.invoice.aggregate({
+        where: { status: 'PENDING' },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.invoice.aggregate({
+        where: { status: 'PENDING', dueDate: { lt: now } },
+        _sum: { amount: true },
+        _count: true,
+      }),
+    ]);
+
+    // Monthly buckets for last 6 months
+    const buckets: { month: string; revenue: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      const agg = await this.prisma.invoice.aggregate({
+        where: { status: 'PAID', paidAt: { gte: d, lt: nextMonth } },
+        _sum: { amount: true },
+      });
+      buckets.push({
+        month: d.toLocaleDateString('pt-PT', { month: 'short', year: '2-digit' }),
+        revenue: agg._sum.amount ?? 0,
+      });
+    }
+
+    return {
+      thisMonth:    { revenue: monthPaid._sum.amount ?? 0, invoices: monthPaid._count },
+      thisYear:     { revenue: yearPaid._sum.amount ?? 0,  invoices: yearPaid._count  },
+      pendingValue: pending._sum.amount ?? 0,
+      overdueValue: overdue._sum.amount ?? 0,
+      overdueCount: overdue._count,
+      monthlyChart: buckets,
+    };
+  }
+
+  async getMuscleBalance(clientId: string) {
+    const twoMonthsAgo = new Date(Date.now() - 60 * 86400_000);
+    const logs = await this.prisma.workoutLog.findMany({
+      where: { clientId, date: { gte: twoMonthsAgo } },
+      select: { entries: true },
+    });
+
+    const patternSets: Record<string, number> = {};
+    for (const log of logs) {
+      for (const entry of (log.entries as any[]) ?? []) {
+        const pattern = entry.pattern as string | undefined;
+        if (!pattern) continue;
+        const completedSets = ((entry.sets ?? []) as any[]).filter((s: any) => s.completed).length;
+        patternSets[pattern] = (patternSets[pattern] ?? 0) + completedSets;
+      }
+    }
+
+    const push = (patternSets['EMPURRAR_HORIZONTAL'] ?? 0) + (patternSets['EMPURRAR_VERTICAL'] ?? 0);
+    const pull = (patternSets['PUXAR_HORIZONTAL'] ?? 0) + (patternSets['PUXAR_VERTICAL'] ?? 0);
+    const knee = patternSets['DOMINANTE_JOELHO'] ?? 0;
+    const hip  = patternSets['DOMINANTE_ANCA'] ?? 0;
+
+    const ratio = (a: number, b: number) =>
+      a + b === 0 ? null : Math.round((a / (a + b)) * 100);
+
+    return {
+      patterns: patternSets,
+      pushPullRatio:  ratio(push, pull),
+      kneHipRatio:    ratio(knee, hip),
+      pushSets: push, pullSets: pull,
+      kneeSets: knee, hipSets: hip,
+      flags: [
+        ...(push > pull * 1.3 ? ['Excesso de push — adicionar tracção'] : []),
+        ...(pull > push * 1.3 ? ['Excesso de pull — adicionar push'] : []),
+        ...(knee > hip * 1.5  ? ['Dominância de joelho — adicionar trabalho de anca'] : []),
+        ...(hip  > knee * 1.5 ? ['Dominância de anca — adicionar trabalho de joelho'] : []),
+      ],
+    };
+  }
+
+  async getWeeklyVolumeByClientId(clientId: string) {
+    const eightWeeksAgo = new Date(Date.now() - 56 * 86400_000);
+    const logs = await this.prisma.workoutLog.findMany({
+      where: { clientId, date: { gte: eightWeeksAgo } },
+      select: { date: true, entries: true, rpe: true },
+      orderBy: { date: 'asc' },
+    });
+
+    // Build 8-week buckets (Mon-Sun)
+    const buckets: Record<string, { week: string; volume: number; workouts: number; avgRpe: number | null; rpeCount: number }> = {};
+    for (let i = 7; i >= 0; i--) {
+      const weekStart = new Date(Date.now() - i * 7 * 86400_000);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Monday
+      weekStart.setHours(0, 0, 0, 0);
+      const label = weekStart.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
+      buckets[label] = { week: label, volume: 0, workouts: 0, avgRpe: null, rpeCount: 0 };
+    }
+
+    for (const log of logs) {
+      const weekStart = new Date(log.date);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+      weekStart.setHours(0, 0, 0, 0);
+      const label = weekStart.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
+      if (!buckets[label]) continue;
+
+      const vol = ((log.entries as any[]) ?? []).reduce((t: number, e: any) =>
+        t + ((e.sets ?? []) as any[]).reduce((s: number, set: any) =>
+          s + (set.completed ? (set.load ?? 0) * (set.reps ?? 0) : 0), 0), 0);
+
+      buckets[label].volume += vol;
+      buckets[label].workouts += 1;
+      if (log.rpe) {
+        buckets[label].rpeCount += 1;
+        buckets[label].avgRpe = ((buckets[label].avgRpe ?? 0) * (buckets[label].rpeCount - 1) + log.rpe) / buckets[label].rpeCount;
+      }
+    }
+
+    return Object.values(buckets).map((b) => ({
+      week: b.week,
+      volume: Math.round(b.volume),
+      workouts: b.workouts,
+      avgRpe: b.avgRpe !== null ? Math.round(b.avgRpe * 10) / 10 : null,
+    }));
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

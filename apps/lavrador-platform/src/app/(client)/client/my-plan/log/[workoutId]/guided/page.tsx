@@ -1,9 +1,12 @@
 'use client';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { WorkoutDto, WorkoutBlock, WorkoutLogEntry, SetType } from '@libs/types';
+import { WorkoutDto, WorkoutBlock, WorkoutLogEntry, SetType, AchievementDto } from '@libs/types';
 import { workoutsApi } from '../../../../../../../lib/api/workouts.api';
 import { cacheWorkout, getCachedWorkout, queuePendingLog, getPendingCount } from '../../../../../../../lib/db/workoutDb';
+import { AchievementCelebration } from '../../../../../../../components/AchievementCelebration';
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -97,6 +100,7 @@ export default function GuidedWorkoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [lastLog, setLastLog] = useState<{ entries: { exerciseId?: string; exerciseName: string; sets: { reps: number; load?: number }[] }[] } | null>(null);
+  const [newAchievement, setNewAchievement] = useState<AchievementDto | null>(null);
 
   const restRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -287,7 +291,19 @@ export default function GuidedWorkoutPage() {
       if (offline || !entries.length) {
         if (entries.length) await queuePendingLog(log, `${workout.id}_${Date.now()}`);
       } else {
+        // Snapshot achievements before logging to detect new ones
+        const beforeAchievements = await fetch(`${API}/api/achievements/my`, { credentials: 'include' })
+          .then((r) => r.json()).catch(() => [] as AchievementDto[]);
+        const beforeSet = new Set((Array.isArray(beforeAchievements) ? beforeAchievements : []).map((a: AchievementDto) => a.type));
+
         await workoutsApi.createLog(log);
+
+        // Check for newly awarded achievements (give server 1s to process)
+        await new Promise((r) => setTimeout(r, 1000));
+        const afterAchievements: AchievementDto[] = await fetch(`${API}/api/achievements/my`, { credentials: 'include' })
+          .then((r) => r.json()).catch(() => []);
+        const newOnes = (Array.isArray(afterAchievements) ? afterAchievements : []).filter((a) => !beforeSet.has(a.type));
+        if (newOnes.length > 0) setNewAchievement(newOnes[0]);
       }
       setDone(true);
     } catch {
@@ -328,21 +344,29 @@ export default function GuidedWorkoutPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-[#0a0a0f]">
-        <div className="w-full max-w-sm text-center">
-          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5"
-            style={{ background: 'linear-gradient(135deg, #005050, #003535)' }}>
-            <span className="material-symbols-outlined text-[#c8f542] text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+      <>
+        {newAchievement && (
+          <AchievementCelebration
+            achievement={newAchievement}
+            onDismiss={() => setNewAchievement(null)}
+          />
+        )}
+        <div className="min-h-screen flex items-center justify-center p-6 bg-[#0a0a0f]">
+          <div className="w-full max-w-sm text-center">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5"
+              style={{ background: 'linear-gradient(135deg, #005050, #003535)' }}>
+              <span className="material-symbols-outlined text-[#c8f542] text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            </div>
+            <h2 className="font-[Manrope] font-black text-3xl text-white mb-2">Sessão concluída!</h2>
+            <p className="text-sm text-zinc-500 mb-8">{formatTime(Math.round((Date.now() - startedAt) / 1000))} de treino</p>
+            <button onClick={() => router.push('/client/my-plan')}
+              className="w-full font-[Manrope] font-bold text-sm py-4 rounded-2xl text-black active:scale-95 transition-all"
+              style={{ background: '#c8f542' }}>
+              Voltar ao plano
+            </button>
           </div>
-          <h2 className="font-[Manrope] font-black text-3xl text-white mb-2">Sessão concluída!</h2>
-          <p className="text-sm text-zinc-500 mb-8">{formatTime(Math.round((Date.now() - startedAt) / 1000))} de treino</p>
-          <button onClick={() => router.push('/client/my-plan')}
-            className="w-full font-[Manrope] font-bold text-sm py-4 rounded-2xl text-black active:scale-95 transition-all"
-            style={{ background: '#c8f542' }}>
-            Voltar ao plano
-          </button>
         </div>
-      </div>
+      </>
     );
   }
 

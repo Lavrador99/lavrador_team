@@ -13,6 +13,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   ],
   providers: [MessagesService, MessagesRepository, MessagesGateway],
   controllers: [MessagesController],
-  exports: [MessagesService],
+  exports: [MessagesService, PrismaModule],
 })
 export class MessagesModule {}

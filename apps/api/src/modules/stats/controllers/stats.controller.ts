@@ -46,4 +46,29 @@ export class StatsController {
   getInsights() {
     return this.statsService.getPtInsights();
   }
+
+  @Get("my/weekly-volume")
+  getMyWeeklyVolume(@Req() req: any) {
+    return this.statsService.getWeeklyVolume(req.user.sub);
+  }
+
+  @Get("client/:id/weekly-volume")
+  getClientWeeklyVolume(@Param("id") id: string) {
+    return this.statsService.getWeeklyVolumeByClientId(id);
+  }
+
+  @Get("leaderboard")
+  getLeaderboard() {
+    return this.statsService.getLeaderboard();
+  }
+
+  @Get("revenue")
+  getRevenueDashboard() {
+    return this.statsService.getRevenueDashboard();
+  }
+
+  @Get("client/:id/muscle-balance")
+  getMuscleBalance(@Param("id") id: string) {
+    return this.statsService.getMuscleBalance(id);
+  }
 }

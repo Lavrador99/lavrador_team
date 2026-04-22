@@ -75,6 +75,10 @@ export default function ClientProfilePage() {
           { icon: 'restaurant',      label: 'Nutrição',       href: '/client/my-nutrition' },
           { icon: 'military_tech',   label: 'Conquistas',     href: '/client/achievements' },
           { icon: 'favorite',        label: 'Check-in diário', href: '/client/readiness' },
+          { icon: 'report',          label: 'Reportar dor',   href: '/client/pain-report' },
+          { icon: 'videocam',        label: 'Análise de forma', href: '/client/form-checks' },
+          { icon: 'leaderboard',     label: 'Leaderboard',     href: '/client/leaderboard' },
+          { icon: 'description',     label: 'Contratos',       href: '/client/contracts' },
         ].map(({ icon, label, href }) => (
           <button key={href} onClick={() => router.push(href)}
             className="flex items-center gap-3 bg-zinc-900 rounded-xl px-4 py-3.5 border border-zinc-800/60 text-left active:scale-[0.99] transition-transform">

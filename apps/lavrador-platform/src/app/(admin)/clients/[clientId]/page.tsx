@@ -20,7 +20,7 @@ import {
   LEVEL_STYLE,
 } from '../../../../lib/constants/styles';
 
-type Tab = 'overview' | 'programs' | 'sessions' | 'assessments' | 'fotos' | 'habitos' | 'pagamentos' | 'timeline';
+type Tab = 'overview' | 'programs' | 'sessions' | 'assessments' | 'fotos' | 'habitos' | 'pagamentos' | 'timeline' | 'dor' | 'forma' | 'pacotes' | 'contratos';
 
 const PATTERN_LABEL: Record<string, string> = {
   EMPURRAR_HORIZONTAL: 'Peito',
@@ -114,6 +114,10 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'habitos',     label: 'Hábitos',     icon: 'check_circle' },
   { id: 'pagamentos',  label: 'Pagamentos',  icon: 'payments' },
   { id: 'timeline',    label: 'Timeline',    icon: 'timeline' },
+  { id: 'dor',         label: 'Dores',       icon: 'report' },
+  { id: 'forma',       label: 'Forma',       icon: 'videocam' },
+  { id: 'pacotes',     label: 'Pacotes',     icon: 'confirmation_number' },
+  { id: 'contratos',   label: 'Contratos',   icon: 'description' },
 ];
 
 export default function ClientDetailPage() {
@@ -135,14 +139,92 @@ export default function ClientDetailPage() {
   const { data: invoices = [] } = useSWR(tab === 'pagamentos' && clientId ? `invoices-${clientId}` : null, () => invoicesApi.getAll(clientId!));
   const { data: habits = [], mutate: mutateHabits } = useSWR(tab === 'habitos' && clientId ? `habits-${clientId}` : null, () => habitsApi.getByClient(clientId!));
   const { data: photos = [], mutate: mutatePhotos } = useSWR(tab === 'fotos' && clientId ? `photos-${clientId}` : null, () => progressPhotosApi.getByClient(clientId!));
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
   const { data: recentReadiness = [] } = useSWR(
     tab === 'overview' && clientId ? `readiness-${clientId}` : null,
-    () => fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'}/api/readiness/client/${clientId}?limit=3`, { credentials: 'include' }).then((r) => r.json()),
+    () => fetch(`${API_BASE}/api/readiness/client/${clientId}?limit=3`, { credentials: 'include' }).then((r) => r.json()),
   );
   const { data: achievements = [] } = useSWR(
     tab === 'overview' && clientId ? `achievements-${clientId}` : null,
-    () => fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'}/api/achievements/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+    () => fetch(`${API_BASE}/api/achievements/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
   );
+  const { data: painReports = [], mutate: mutatePain } = useSWR(
+    tab === 'dor' && clientId ? `pain-${clientId}` : null,
+    () => fetch(`${API_BASE}/api/pain-reports/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+  );
+  const { data: formChecks = [], mutate: mutateFormChecks } = useSWR(
+    tab === 'forma' && clientId ? `form-checks-${clientId}` : null,
+    () => fetch(`${API_BASE}/api/form-checks/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+  );
+  const [feedbackInputs, setFeedbackInputs] = useState<Record<string, string>>({});
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+
+  const { data: sessionPackages = [], mutate: mutatePackages } = useSWR(
+    tab === 'pacotes' && clientId ? `packages-${clientId}` : null,
+    () => fetch(`${API_BASE}/api/session-packages/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+  );
+  const { data: contracts = [], mutate: mutateContracts } = useSWR(
+    tab === 'contratos' && clientId ? `contracts-${clientId}` : null,
+    () => fetch(`${API_BASE}/api/contracts/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+  );
+  const [newPkg, setNewPkg] = useState({ name: '', totalSessions: 10, priceEur: 100 });
+  const [savingPkg, setSavingPkg] = useState(false);
+  const [newContract, setNewContract] = useState({ title: '', content: '' });
+  const [savingContract, setSavingContract] = useState(false);
+
+  async function createPackage() {
+    if (!clientId || !newPkg.name.trim()) return;
+    setSavingPkg(true);
+    try {
+      await fetch(`${API_BASE}/api/session-packages`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ ...newPkg, clientId }),
+      });
+      mutatePackages();
+      setNewPkg({ name: '', totalSessions: 10, priceEur: 100 });
+    } finally { setSavingPkg(false); }
+  }
+
+  async function usePackageSession(pkgId: string) {
+    await fetch(`${API_BASE}/api/session-packages/${pkgId}/use`, { method: 'PATCH', credentials: 'include' });
+    mutatePackages();
+  }
+
+  async function createContract() {
+    if (!clientId || !newContract.title.trim() || !newContract.content.trim()) return;
+    setSavingContract(true);
+    try {
+      await fetch(`${API_BASE}/api/contracts`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ ...newContract, clientId }),
+      });
+      mutateContracts();
+      setNewContract({ title: '', content: '' });
+    } finally { setSavingContract(false); }
+  }
+
+  async function resolvePain(id: string) {
+    await fetch(`${API_BASE}/api/pain-reports/${id}/resolve`, { method: 'PATCH', credentials: 'include' });
+    mutatePain();
+  }
+
+  async function submitFormReview(id: string) {
+    const feedback = feedbackInputs[id];
+    if (!feedback?.trim()) return;
+    setReviewingId(id);
+    try {
+      await fetch(`${API_BASE}/api/form-checks/${id}/review`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ptFeedback: feedback }),
+      });
+      mutateFormChecks();
+      setFeedbackInputs((prev) => { const n = { ...prev }; delete n[id]; return n; });
+    } finally {
+      setReviewingId(null);
+    }
+  }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -671,6 +753,248 @@ export default function ClientDetailPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Pain Reports */}
+      {tab === 'dor' && (
+        <div className="space-y-3">
+          {!Array.isArray(painReports) || painReports.length === 0 ? (
+            <EmptyState icon="report" title="Sem reportes de dor." />
+          ) : (
+            (painReports as any[]).map((r) => {
+              const intensityColor = ({ MILD: 'text-amber-400 bg-amber-400/10', MODERATE: 'text-orange-400 bg-orange-400/10', SEVERE: 'text-red-400 bg-red-400/10' } as Record<string,string>)[r.intensity] ?? '';
+              return (
+                <div key={r.id} className={`bg-surface-container-lowest rounded-xl p-4 ${r.resolvedAt ? 'opacity-60' : ''}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-headline font-bold text-sm text-on-surface">{r.bodyPart}</div>
+                      <div className="font-label text-xs text-secondary mt-0.5">
+                        {new Date(r.createdAt).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' })}
+                      </div>
+                      {r.description && <p className="font-label text-xs text-secondary mt-1">{r.description}</p>}
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className={`font-label text-xs font-bold px-2 py-1 rounded-full ${intensityColor}`}>
+                        {({ MILD: 'Leve', MODERATE: 'Moderada', SEVERE: 'Severa' } as Record<string,string>)[r.intensity]}
+                      </span>
+                      {!r.resolvedAt ? (
+                        <button onClick={() => resolvePain(r.id)} className="font-label text-xs text-primary hover:underline">Marcar resolvida</button>
+                      ) : (
+                        <span className="font-label text-xs text-primary">✓ Resolvida</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Form Checks */}
+      {tab === 'forma' && (
+        <div className="space-y-3">
+          {!Array.isArray(formChecks) || formChecks.length === 0 ? (
+            <EmptyState icon="videocam" title="Sem pedidos de análise de forma." />
+          ) : (
+            (formChecks as any[]).map((c) => (
+              <div key={c.id} className="bg-surface-container-lowest rounded-xl p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div>
+                    <div className="font-headline font-bold text-sm text-on-surface">{c.exerciseName}</div>
+                    <div className="font-label text-xs text-secondary mt-0.5">{new Date(c.createdAt).toLocaleDateString('pt-PT')}</div>
+                  </div>
+                  <span className={`font-label text-xs font-bold px-2 py-1 rounded-full ${c.status === 'REVIEWED' ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-secondary'}`}>
+                    {c.status === 'REVIEWED' ? '✓ Analisado' : '⏳ Pendente'}
+                  </span>
+                </div>
+                {c.notes && <p className="font-label text-xs text-secondary mb-2">{c.notes}</p>}
+                <a href={c.videoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 font-label text-xs text-primary hover:underline mb-3">
+                  <span className="material-symbols-outlined text-sm">play_circle</span>Ver vídeo
+                </a>
+                {c.ptFeedback && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 mb-3">
+                    <p className="font-label text-xs text-primary font-bold mb-1">Feedback</p>
+                    <p className="font-body text-sm text-on-surface">{c.ptFeedback}</p>
+                  </div>
+                )}
+                {c.status === 'PENDING' && (
+                  <div className="space-y-2">
+                    <textarea
+                      value={feedbackInputs[c.id] ?? ''}
+                      onChange={(e) => setFeedbackInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                      placeholder="Escreve o feedback para o cliente..."
+                      rows={2}
+                      className="w-full bg-surface-container-high border-none rounded-xl px-3 py-2 text-sm text-on-surface placeholder:text-outline resize-none outline-none"
+                    />
+                    <button
+                      onClick={() => submitFormReview(c.id)}
+                      disabled={!feedbackInputs[c.id]?.trim() || reviewingId === c.id}
+                      className="kinetic-gradient text-on-primary font-label font-bold text-xs px-4 py-2 rounded-lg disabled:opacity-40"
+                    >
+                      {reviewingId === c.id ? 'A enviar...' : 'Enviar feedback'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ── PACOTES TAB ── */}
+      {tab === 'pacotes' && (
+        <div className="space-y-4">
+          <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+            <p className="label-category mb-3">Novo pacote</p>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div className="col-span-3">
+                <input
+                  value={newPkg.name}
+                  onChange={(e) => setNewPkg((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="Nome do pacote (ex: Pack Mensal 12)"
+                  className="w-full bg-surface-container-high border-none rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-outline outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="label-category mb-1 block">Sessões</label>
+                <input
+                  type="number"
+                  value={newPkg.totalSessions}
+                  onChange={(e) => setNewPkg((p) => ({ ...p, totalSessions: Number(e.target.value) }))}
+                  min={1}
+                  className="w-full bg-surface-container-high border-none rounded-xl px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="label-category mb-1 block">Preço (€)</label>
+                <input
+                  type="number"
+                  value={newPkg.priceEur}
+                  onChange={(e) => setNewPkg((p) => ({ ...p, priceEur: Number(e.target.value) }))}
+                  min={0}
+                  className="w-full bg-surface-container-high border-none rounded-xl px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={createPackage}
+                  disabled={!newPkg.name.trim() || savingPkg}
+                  className="w-full kinetic-gradient text-on-primary font-label font-bold text-xs px-4 py-2.5 rounded-xl disabled:opacity-40"
+                >
+                  {savingPkg ? 'A criar...' : 'Criar pacote'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {!Array.isArray(sessionPackages) || sessionPackages.length === 0 ? (
+            <EmptyState icon="confirmation_number" title="Sem pacotes de sessões." />
+          ) : (
+            (sessionPackages as any[]).map((pkg) => {
+              const used = pkg.usedSessions ?? 0;
+              const total = pkg.totalSessions ?? 0;
+              const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+              const remaining = total - used;
+              return (
+                <div key={pkg.id} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <div className="font-headline font-bold text-sm text-on-surface">{pkg.name}</div>
+                      <div className="font-label text-xs text-secondary mt-0.5">
+                        {new Date(pkg.createdAt).toLocaleDateString('pt-PT')} · €{pkg.priceEur}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-headline font-black text-xl text-on-surface">{remaining}</div>
+                      <div className="font-label text-xs text-secondary">restantes</div>
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <div className="flex justify-between label-category mb-1">
+                      <span>{used} usadas</span>
+                      <span>{total} total</span>
+                    </div>
+                    <div className="h-2 bg-surface-container-high rounded-full overflow-hidden">
+                      <div
+                        className="h-full kinetic-gradient rounded-full transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => usePackageSession(pkg.id)}
+                    disabled={remaining === 0}
+                    className="label-category text-primary hover:underline disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-sm">remove_circle</span>
+                    Registar sessão usada
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* ── CONTRATOS TAB ── */}
+      {tab === 'contratos' && (
+        <div className="space-y-4">
+          <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+            <p className="label-category mb-3">Novo contrato</p>
+            <div className="space-y-3">
+              <input
+                value={newContract.title}
+                onChange={(e) => setNewContract((ct) => ({ ...ct, title: e.target.value }))}
+                placeholder="Título do contrato"
+                className="w-full bg-surface-container-high border-none rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-outline outline-none focus:ring-1 focus:ring-primary"
+              />
+              <textarea
+                value={newContract.content}
+                onChange={(e) => setNewContract((ct) => ({ ...ct, content: e.target.value }))}
+                placeholder="Conteúdo do contrato (texto completo)..."
+                rows={6}
+                className="w-full bg-surface-container-high border-none rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-outline resize-none outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button
+                onClick={createContract}
+                disabled={!newContract.title.trim() || !newContract.content.trim() || savingContract}
+                className="kinetic-gradient text-on-primary font-label font-bold text-xs px-5 py-2.5 rounded-xl disabled:opacity-40"
+              >
+                {savingContract ? 'A criar...' : 'Criar e enviar ao cliente'}
+              </button>
+            </div>
+          </div>
+
+          {!Array.isArray(contracts) || contracts.length === 0 ? (
+            <EmptyState icon="description" title="Sem contratos." />
+          ) : (
+            (contracts as any[]).map((ct) => (
+              <div key={ct.id} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-headline font-bold text-sm text-on-surface">{ct.title}</div>
+                    <div className="font-label text-xs text-secondary mt-0.5">
+                      Criado em {new Date(ct.createdAt).toLocaleDateString('pt-PT')}
+                      {ct.signedAt && ` · Assinado em ${new Date(ct.signedAt).toLocaleDateString('pt-PT')}`}
+                    </div>
+                    {ct.signedAt && (
+                      <div className="font-label text-xs text-primary mt-1">
+                        ✓ Assinado por <span className="font-bold italic">{ct.signatureName}</span>
+                      </div>
+                    )}
+                  </div>
+                  <span className={`font-label text-xs font-bold px-2 py-1 rounded-full flex-shrink-0 ${ct.signedAt ? 'bg-primary/10 text-primary' : 'bg-amber-400/10 text-amber-400'}`}>
+                    {ct.signedAt ? '✓ Assinado' : '⏳ Pendente'}
+                  </span>
+                </div>
+                <div className="mt-3 bg-surface-container-high rounded-xl p-3 max-h-28 overflow-y-auto">
+                  <p className="font-body text-xs text-secondary whitespace-pre-wrap leading-relaxed">{ct.content}</p>
+                </div>
               </div>
             ))
           )}

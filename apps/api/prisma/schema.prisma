@@ -177,6 +177,10 @@ model Client {
   achievements     ClientAchievement[]
   readinessLogs    ReadinessLog[]
   automationRuns   AutomationRun[]
+  painReports      PainReport[]
+  formChecks       FormCheckRequest[]
+  sessionPackages  SessionPackage[]
+  contracts        DigitalContract[]
 
   @@map("clients")
 }
@@ -720,4 +724,92 @@ model AutomationRun {
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@map("automation_runs")
+}
+
+// ─────────────────────────────────────────
+// PAIN REPORTS
+// ─────────────────────────────────────────
+
+enum PainIntensity {
+  MILD
+  MODERATE
+  SEVERE
+}
+
+model PainReport {
+  id          String        @id @default(cuid())
+  clientId    String
+  bodyPart    String
+  intensity   PainIntensity
+  description String?
+  workoutLogId String?
+  resolvedAt  DateTime?
+  createdAt   DateTime      @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("pain_reports")
+}
+
+// ─────────────────────────────────────────
+// VIDEO FORM CHECKS
+// ─────────────────────────────────────────
+
+enum FormCheckStatus {
+  PENDING
+  REVIEWED
+}
+
+model FormCheckRequest {
+  id           String          @id @default(cuid())
+  clientId     String
+  exerciseName String
+  videoUrl     String
+  notes        String?
+  status       FormCheckStatus @default(PENDING)
+  ptFeedback   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime        @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("form_check_requests")
+}
+
+// ─────────────────────────────────────────
+// SESSION PACKAGES
+// ─────────────────────────────────────────
+
+model SessionPackage {
+  id              String   @id @default(cuid())
+  clientId        String
+  name            String
+  totalSessions   Int
+  usedSessions    Int      @default(0)
+  priceEur        Float
+  validUntil      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("session_packages")
+}
+
+// ─────────────────────────────────────────
+// DIGITAL CONTRACTS
+// ─────────────────────────────────────────
+
+model DigitalContract {
+  id            String    @id @default(cuid())
+  clientId      String
+  title         String
+  content       String    @db.Text
+  signedAt      DateTime?
+  signatureName String?
+  createdAt     DateTime  @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("digital_contracts")
 }

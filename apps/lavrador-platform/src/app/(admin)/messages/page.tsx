@@ -18,6 +18,30 @@ export default function MessagesPage() {
   const [draft, setDraft] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
+  const [showBroadcast, setShowBroadcast] = useState(false);
+  const [broadcastContent, setBroadcastContent] = useState('');
+  const [broadcastSending, setBroadcastSending] = useState(false);
+  const [broadcastDone, setBroadcastDone] = useState<number | null>(null);
+
+  const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
+
+  async function sendBroadcast() {
+    if (!broadcastContent.trim()) return;
+    setBroadcastSending(true);
+    try {
+      const res = await fetch(`${API}/api/messages/broadcast`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content: broadcastContent }),
+      });
+      const data = await res.json();
+      setBroadcastDone(data.sent ?? 0);
+      setBroadcastContent('');
+    } finally {
+      setBroadcastSending(false);
+    }
+  }
   const bottomRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<ConversationPartner | null>(null);
 
@@ -67,14 +91,52 @@ export default function MessagesPage() {
       <div className="w-72 flex-shrink-0 bg-surface-container-low flex flex-col">
         <div className="px-4 py-4 flex items-center justify-between border-b border-outline-variant/10">
           <span className="font-headline font-bold text-sm text-on-surface">Mensagens</span>
-          <button
-            onClick={() => setShowNewChat(!showNewChat)}
-            className="label-category text-primary hover:text-primary/80 flex items-center gap-1"
-          >
-            <span className="material-symbols-outlined text-base">edit</span>
-            Nova
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setShowBroadcast(true); setBroadcastDone(null); }}
+              className="label-category text-secondary hover:text-on-surface flex items-center gap-1"
+              title="Broadcast para todos"
+            >
+              <span className="material-symbols-outlined text-base">campaign</span>
+            </button>
+            <button
+              onClick={() => setShowNewChat(!showNewChat)}
+              className="label-category text-primary hover:text-primary/80 flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-base">edit</span>
+              Nova
+            </button>
+          </div>
         </div>
+
+        {showBroadcast && (
+          <div className="border-b border-outline-variant/10 px-3 py-3 bg-surface-container space-y-2">
+            <div className="font-label text-xs font-bold text-secondary uppercase tracking-widest">Broadcast para todos</div>
+            {broadcastDone !== null ? (
+              <div className="font-label text-xs text-primary">✓ Enviado para {broadcastDone} clientes</div>
+            ) : (
+              <>
+                <textarea
+                  value={broadcastContent}
+                  onChange={(e) => setBroadcastContent(e.target.value)}
+                  placeholder="Mensagem para todos os clientes..."
+                  rows={2}
+                  className="w-full bg-surface-container-highest border-none rounded-lg px-3 py-2 text-sm text-on-surface placeholder:text-outline resize-none outline-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={sendBroadcast}
+                    disabled={!broadcastContent.trim() || broadcastSending}
+                    className="kinetic-gradient text-on-primary font-label font-bold text-xs px-3 py-1.5 rounded-lg disabled:opacity-40"
+                  >
+                    {broadcastSending ? 'A enviar...' : 'Enviar'}
+                  </button>
+                  <button onClick={() => setShowBroadcast(false)} className="font-label text-xs text-secondary">Cancelar</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {showNewChat && (
           <div className="border-b border-outline-variant/10 px-3 py-2 max-h-40 overflow-y-auto bg-surface-container">
