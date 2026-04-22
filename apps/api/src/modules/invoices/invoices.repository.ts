@@ -39,8 +39,14 @@ export class InvoicesRepository {
     description?: string;
     dueDate?: Date;
     notes?: string;
+    stripeCheckoutUrl?: string;
+    stripeSessionId?: string;
   }) {
     return this.prisma.invoice.update({ where: { id }, data });
+  }
+
+  async findByStripeSession(sessionId: string) {
+    return this.prisma.invoice.findFirst({ where: { stripeSessionId: sessionId } });
   }
 
   async delete(id: string) {

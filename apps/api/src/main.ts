@@ -11,7 +11,7 @@ import { initSentry } from './sentry';
 async function bootstrap() {
   initSentry();
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
 
   // Ensure uploads directory exists
   const uploadsDir = join(process.cwd(), 'uploads', 'exercises');

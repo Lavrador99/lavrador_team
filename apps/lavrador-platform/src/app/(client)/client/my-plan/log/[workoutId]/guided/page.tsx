@@ -133,16 +133,25 @@ export default function GuidedWorkoutPage() {
     const init: BlockSets = {};
     for (const ex of exercises) {
       const key = makeKey(ex.blockId, ex.exIdx);
-      init[key] = Array.from({ length: ex.sets }, () => ({
-        reps: ex.reps?.replace(/[^0-9]/g, '') || '',
-        load: ex.load ? String(ex.load) : '',
-        rpe: '',
-        completed: false,
-        setType: 'NORMAL',
-      }));
+      // Try to pre-fill from last session's actual values
+      const prevData = lastLog?.entries.find(
+        (e) => (ex.exerciseId && e.exerciseId === ex.exerciseId) || e.exerciseName === ex.exerciseName,
+      );
+      const prevSetsData = prevData?.sets ?? [];
+
+      init[key] = Array.from({ length: ex.sets }, (_, i) => {
+        const prev = prevSetsData[i];
+        return {
+          reps: prev?.reps ? String(prev.reps) : (ex.reps?.replace(/[^0-9]/g, '') || ''),
+          load: prev?.load ? String(prev.load) : (ex.load ? String(ex.load) : ''),
+          rpe: '',
+          completed: false,
+          setType: 'NORMAL' as SetType,
+        };
+      });
     }
     setSets(init);
-  }, [workout]);
+  }, [workout, lastLog]);
 
   // ── Timer ───────────────────────────────────────────────────────────────────
 
@@ -184,10 +193,18 @@ export default function GuidedWorkoutPage() {
     }
     restRef.current = setInterval(() => {
       setRestTimer((t) => {
+        if (t !== null && t === 4) {
+          if (typeof navigator.vibrate === 'function') navigator.vibrate([100, 50, 100]);
+        }
         if (t === null || t <= 1) {
           clearInterval(restRef.current!);
           releaseWakeLock();
           if (typeof navigator.vibrate === 'function') navigator.vibrate([300, 100, 300]);
+          // Auto-advance to next exercise when rest ends
+          setCurrentIdx((i) => {
+            const maxIdx = flat.length - 1;
+            return i < maxIdx ? i + 1 : i;
+          });
           return null;
         }
         return t - 1;
@@ -479,22 +496,51 @@ export default function GuidedWorkoutPage() {
           })}
         </div>
 
-        {/* Rest timer */}
+        {/* Rest timer — full-screen overlay */}
         {restTimer !== null && (
-          <div className="rounded-2xl border border-zinc-700/60 bg-zinc-900 px-5 py-4 mb-4 flex items-center gap-4">
-            <div className="flex-1">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#84d4d3] mb-1">Descanso</div>
-              <div className="font-[Manrope] font-black text-4xl text-white tabular-nums">{restTimer}s</div>
-              <div className="mt-2 bg-zinc-800 rounded-full h-1 overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-1000"
-                  style={{ width: `${((restMax - restTimer) / restMax) * 100}%`, background: '#84d4d3' }} />
-              </div>
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 50,
+              background: 'rgba(10,10,15,0.96)',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '1rem',
+            }}
+          >
+            <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.2em', color: '#84d4d3', fontFamily: 'DM Mono, monospace' }}>
+              Descanso
+            </div>
+            <div style={{
+              fontSize: '7rem', fontWeight: 900, color: restTimer <= 3 ? '#c8f542' : 'white',
+              fontFamily: 'Manrope, sans-serif', lineHeight: 1, tabularNums: true,
+              transition: 'color 0.3s',
+            }}>
+              {restTimer}
+            </div>
+            <div style={{ width: '200px', height: '4px', background: '#1a1a24', borderRadius: '99px', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', background: '#84d4d3', borderRadius: '99px',
+                width: `${((restMax - restTimer) / restMax) * 100}%`,
+                transition: 'width 1s linear',
+              }} />
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#666', fontFamily: 'DM Mono, monospace' }}>
+              {current.exerciseName}
             </div>
             <button
-              onClick={() => { setRestTimer(null); if (restRef.current) clearInterval(restRef.current); releaseWakeLock(); }}
-              className="text-xs font-bold rounded-xl px-4 py-2.5 text-zinc-300 bg-zinc-800"
+              onClick={() => {
+                setRestTimer(null);
+                if (restRef.current) clearInterval(restRef.current);
+                releaseWakeLock();
+                setCurrentIdx((i) => i < flat.length - 1 ? i + 1 : i);
+              }}
+              style={{
+                marginTop: '1.5rem', background: '#1a1a24', color: '#888', border: 'none',
+                borderRadius: '12px', padding: '0.7rem 2rem',
+                fontFamily: 'DM Mono, monospace', fontSize: '0.85rem', cursor: 'pointer',
+              }}
             >
-              Pular
+              Pular descanso
             </button>
           </div>
         )}
