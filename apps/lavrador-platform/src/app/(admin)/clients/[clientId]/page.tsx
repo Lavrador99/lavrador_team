@@ -20,7 +20,7 @@ import {
   LEVEL_STYLE,
 } from '../../../../lib/constants/styles';
 
-type Tab = 'overview' | 'programs' | 'sessions' | 'assessments' | 'fotos' | 'habitos' | 'pagamentos' | 'timeline' | 'dor' | 'forma';
+type Tab = 'overview' | 'programs' | 'sessions' | 'assessments' | 'fotos' | 'habitos' | 'pagamentos' | 'timeline' | 'dor' | 'forma' | 'pacotes' | 'contratos';
 
 const PATTERN_LABEL: Record<string, string> = {
   EMPURRAR_HORIZONTAL: 'Peito',
@@ -116,6 +116,8 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'timeline',    label: 'Timeline',    icon: 'timeline' },
   { id: 'dor',         label: 'Dores',       icon: 'report' },
   { id: 'forma',       label: 'Forma',       icon: 'videocam' },
+  { id: 'pacotes',     label: 'Pacotes',     icon: 'confirmation_number' },
+  { id: 'contratos',   label: 'Contratos',   icon: 'description' },
 ];
 
 export default function ClientDetailPage() {
@@ -156,6 +158,50 @@ export default function ClientDetailPage() {
   );
   const [feedbackInputs, setFeedbackInputs] = useState<Record<string, string>>({});
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+
+  const { data: sessionPackages = [], mutate: mutatePackages } = useSWR(
+    tab === 'pacotes' && clientId ? `packages-${clientId}` : null,
+    () => fetch(`${API_BASE}/api/session-packages/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+  );
+  const { data: contracts = [], mutate: mutateContracts } = useSWR(
+    tab === 'contratos' && clientId ? `contracts-${clientId}` : null,
+    () => fetch(`${API_BASE}/api/contracts/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+  );
+  const [newPkg, setNewPkg] = useState({ name: '', totalSessions: 10, priceEur: 100 });
+  const [savingPkg, setSavingPkg] = useState(false);
+  const [newContract, setNewContract] = useState({ title: '', content: '' });
+  const [savingContract, setSavingContract] = useState(false);
+
+  async function createPackage() {
+    if (!clientId || !newPkg.name.trim()) return;
+    setSavingPkg(true);
+    try {
+      await fetch(`${API_BASE}/api/session-packages`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ ...newPkg, clientId }),
+      });
+      mutatePackages();
+      setNewPkg({ name: '', totalSessions: 10, priceEur: 100 });
+    } finally { setSavingPkg(false); }
+  }
+
+  async function usePackageSession(pkgId: string) {
+    await fetch(`${API_BASE}/api/session-packages/${pkgId}/use`, { method: 'PATCH', credentials: 'include' });
+    mutatePackages();
+  }
+
+  async function createContract() {
+    if (!clientId || !newContract.title.trim() || !newContract.content.trim()) return;
+    setSavingContract(true);
+    try {
+      await fetch(`${API_BASE}/api/contracts`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ ...newContract, clientId }),
+      });
+      mutateContracts();
+      setNewContract({ title: '', content: '' });
+    } finally { setSavingContract(false); }
+  }
 
   async function resolvePain(id: string) {
     await fetch(`${API_BASE}/api/pain-reports/${id}/resolve`, { method: 'PATCH', credentials: 'include' });
@@ -794,6 +840,161 @@ export default function ClientDetailPage() {
                     </button>
                   </div>
                 )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ── PACOTES TAB ── */}
+      {tab === 'pacotes' && (
+        <div className="space-y-4">
+          <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+            <p className="label-category mb-3">Novo pacote</p>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div className="col-span-3">
+                <input
+                  value={newPkg.name}
+                  onChange={(e) => setNewPkg((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="Nome do pacote (ex: Pack Mensal 12)"
+                  className="w-full bg-surface-container-high border-none rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-outline outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="label-category mb-1 block">Sessões</label>
+                <input
+                  type="number"
+                  value={newPkg.totalSessions}
+                  onChange={(e) => setNewPkg((p) => ({ ...p, totalSessions: Number(e.target.value) }))}
+                  min={1}
+                  className="w-full bg-surface-container-high border-none rounded-xl px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="label-category mb-1 block">Preço (€)</label>
+                <input
+                  type="number"
+                  value={newPkg.priceEur}
+                  onChange={(e) => setNewPkg((p) => ({ ...p, priceEur: Number(e.target.value) }))}
+                  min={0}
+                  className="w-full bg-surface-container-high border-none rounded-xl px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={createPackage}
+                  disabled={!newPkg.name.trim() || savingPkg}
+                  className="w-full kinetic-gradient text-on-primary font-label font-bold text-xs px-4 py-2.5 rounded-xl disabled:opacity-40"
+                >
+                  {savingPkg ? 'A criar...' : 'Criar pacote'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {!Array.isArray(sessionPackages) || sessionPackages.length === 0 ? (
+            <EmptyState icon="confirmation_number" title="Sem pacotes de sessões." />
+          ) : (
+            (sessionPackages as any[]).map((pkg) => {
+              const used = pkg.usedSessions ?? 0;
+              const total = pkg.totalSessions ?? 0;
+              const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+              const remaining = total - used;
+              return (
+                <div key={pkg.id} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <div className="font-headline font-bold text-sm text-on-surface">{pkg.name}</div>
+                      <div className="font-label text-xs text-secondary mt-0.5">
+                        {new Date(pkg.createdAt).toLocaleDateString('pt-PT')} · €{pkg.priceEur}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-headline font-black text-xl text-on-surface">{remaining}</div>
+                      <div className="font-label text-xs text-secondary">restantes</div>
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <div className="flex justify-between label-category mb-1">
+                      <span>{used} usadas</span>
+                      <span>{total} total</span>
+                    </div>
+                    <div className="h-2 bg-surface-container-high rounded-full overflow-hidden">
+                      <div
+                        className="h-full kinetic-gradient rounded-full transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => usePackageSession(pkg.id)}
+                    disabled={remaining === 0}
+                    className="label-category text-primary hover:underline disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-sm">remove_circle</span>
+                    Registar sessão usada
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* ── CONTRATOS TAB ── */}
+      {tab === 'contratos' && (
+        <div className="space-y-4">
+          <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+            <p className="label-category mb-3">Novo contrato</p>
+            <div className="space-y-3">
+              <input
+                value={newContract.title}
+                onChange={(e) => setNewContract((ct) => ({ ...ct, title: e.target.value }))}
+                placeholder="Título do contrato"
+                className="w-full bg-surface-container-high border-none rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-outline outline-none focus:ring-1 focus:ring-primary"
+              />
+              <textarea
+                value={newContract.content}
+                onChange={(e) => setNewContract((ct) => ({ ...ct, content: e.target.value }))}
+                placeholder="Conteúdo do contrato (texto completo)..."
+                rows={6}
+                className="w-full bg-surface-container-high border-none rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-outline resize-none outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button
+                onClick={createContract}
+                disabled={!newContract.title.trim() || !newContract.content.trim() || savingContract}
+                className="kinetic-gradient text-on-primary font-label font-bold text-xs px-5 py-2.5 rounded-xl disabled:opacity-40"
+              >
+                {savingContract ? 'A criar...' : 'Criar e enviar ao cliente'}
+              </button>
+            </div>
+          </div>
+
+          {!Array.isArray(contracts) || contracts.length === 0 ? (
+            <EmptyState icon="description" title="Sem contratos." />
+          ) : (
+            (contracts as any[]).map((ct) => (
+              <div key={ct.id} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-headline font-bold text-sm text-on-surface">{ct.title}</div>
+                    <div className="font-label text-xs text-secondary mt-0.5">
+                      Criado em {new Date(ct.createdAt).toLocaleDateString('pt-PT')}
+                      {ct.signedAt && ` · Assinado em ${new Date(ct.signedAt).toLocaleDateString('pt-PT')}`}
+                    </div>
+                    {ct.signedAt && (
+                      <div className="font-label text-xs text-primary mt-1">
+                        ✓ Assinado por <span className="font-bold italic">{ct.signatureName}</span>
+                      </div>
+                    )}
+                  </div>
+                  <span className={`font-label text-xs font-bold px-2 py-1 rounded-full flex-shrink-0 ${ct.signedAt ? 'bg-primary/10 text-primary' : 'bg-amber-400/10 text-amber-400'}`}>
+                    {ct.signedAt ? '✓ Assinado' : '⏳ Pendente'}
+                  </span>
+                </div>
+                <div className="mt-3 bg-surface-container-high rounded-xl p-3 max-h-28 overflow-y-auto">
+                  <p className="font-body text-xs text-secondary whitespace-pre-wrap leading-relaxed">{ct.content}</p>
+                </div>
               </div>
             ))
           )}

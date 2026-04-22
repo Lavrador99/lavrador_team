@@ -86,4 +86,38 @@ export class SessionsService {
   async getStatsForClient(clientId: string) {
     return this.repo.countByStatus(clientId);
   }
+
+  async exportAsIcal(): Promise<string> {
+    const sessions = await this.prisma.session.findMany({
+      where: { status: 'SCHEDULED' },
+      include: { client: true },
+      orderBy: { scheduledAt: 'asc' },
+    });
+
+    const lines: string[] = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Lavrador Team//Sessions//PT',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+    ];
+
+    for (const s of sessions) {
+      const start = new Date(s.scheduledAt);
+      const end   = new Date(start.getTime() + (s.durationMin ?? 60) * 60_000);
+      const fmt   = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${s.id}@lavrador.pt`);
+      lines.push(`DTSTAMP:${fmt(new Date())}`);
+      lines.push(`DTSTART:${fmt(start)}`);
+      lines.push(`DTEND:${fmt(end)}`);
+      lines.push(`SUMMARY:Sessão — ${s.client.name}`);
+      if (s.notes) lines.push(`DESCRIPTION:${s.notes.replace(/\n/g, '\\n')}`);
+      lines.push('END:VEVENT');
+    }
+
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n');
+  }
 }

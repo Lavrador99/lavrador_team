@@ -31,6 +31,8 @@ import { ReadinessModule } from './modules/readiness/readiness.module';
 import { AutomationsModule } from './modules/automations/automations.module';
 import { PainReportsModule } from './modules/pain-reports/pain-reports.module';
 import { FormChecksModule } from './modules/form-checks/form-checks.module';
+import { SessionPackagesModule } from './modules/session-packages/session-packages.module';
+import { ContractsModule } from './modules/contracts/contracts.module';
 
 @Module({
   imports: [
@@ -76,6 +78,8 @@ import { FormChecksModule } from './modules/form-checks/form-checks.module';
     AutomationsModule,
     PainReportsModule,
     FormChecksModule,
+    SessionPackagesModule,
+    ContractsModule,
   ],
 })
 export class AppModule {}
