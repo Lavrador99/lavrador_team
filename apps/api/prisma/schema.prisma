@@ -177,6 +177,8 @@ model Client {
   achievements     ClientAchievement[]
   readinessLogs    ReadinessLog[]
   automationRuns   AutomationRun[]
+  painReports      PainReport[]
+  formChecks       FormCheckRequest[]
 
   @@map("clients")
 }
@@ -720,4 +722,54 @@ model AutomationRun {
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@map("automation_runs")
+}
+
+// ─────────────────────────────────────────
+// PAIN REPORTS
+// ─────────────────────────────────────────
+
+enum PainIntensity {
+  MILD
+  MODERATE
+  SEVERE
+}
+
+model PainReport {
+  id          String        @id @default(cuid())
+  clientId    String
+  bodyPart    String
+  intensity   PainIntensity
+  description String?
+  workoutLogId String?
+  resolvedAt  DateTime?
+  createdAt   DateTime      @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("pain_reports")
+}
+
+// ─────────────────────────────────────────
+// VIDEO FORM CHECKS
+// ─────────────────────────────────────────
+
+enum FormCheckStatus {
+  PENDING
+  REVIEWED
+}
+
+model FormCheckRequest {
+  id           String          @id @default(cuid())
+  clientId     String
+  exerciseName String
+  videoUrl     String
+  notes        String?
+  status       FormCheckStatus @default(PENDING)
+  ptFeedback   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime        @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("form_check_requests")
 }

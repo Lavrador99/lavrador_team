@@ -462,6 +462,57 @@ export class StatsService {
       lastAssessment: c.assessments[0]?.createdAt ?? null,
     }));
   }
+
+  async getWeeklyVolume(userId: string) {
+    const client = await this.prisma.client.findFirst({ where: { userId } });
+    if (!client) return [];
+    return this.getWeeklyVolumeByClientId(client.id);
+  }
+
+  async getWeeklyVolumeByClientId(clientId: string) {
+    const eightWeeksAgo = new Date(Date.now() - 56 * 86400_000);
+    const logs = await this.prisma.workoutLog.findMany({
+      where: { clientId, date: { gte: eightWeeksAgo } },
+      select: { date: true, entries: true, rpe: true },
+      orderBy: { date: 'asc' },
+    });
+
+    // Build 8-week buckets (Mon-Sun)
+    const buckets: Record<string, { week: string; volume: number; workouts: number; avgRpe: number | null; rpeCount: number }> = {};
+    for (let i = 7; i >= 0; i--) {
+      const weekStart = new Date(Date.now() - i * 7 * 86400_000);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Monday
+      weekStart.setHours(0, 0, 0, 0);
+      const label = weekStart.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
+      buckets[label] = { week: label, volume: 0, workouts: 0, avgRpe: null, rpeCount: 0 };
+    }
+
+    for (const log of logs) {
+      const weekStart = new Date(log.date);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+      weekStart.setHours(0, 0, 0, 0);
+      const label = weekStart.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
+      if (!buckets[label]) continue;
+
+      const vol = ((log.entries as any[]) ?? []).reduce((t: number, e: any) =>
+        t + ((e.sets ?? []) as any[]).reduce((s: number, set: any) =>
+          s + (set.completed ? (set.load ?? 0) * (set.reps ?? 0) : 0), 0), 0);
+
+      buckets[label].volume += vol;
+      buckets[label].workouts += 1;
+      if (log.rpe) {
+        buckets[label].rpeCount += 1;
+        buckets[label].avgRpe = ((buckets[label].avgRpe ?? 0) * (buckets[label].rpeCount - 1) + log.rpe) / buckets[label].rpeCount;
+      }
+    }
+
+    return Object.values(buckets).map((b) => ({
+      week: b.week,
+      volume: Math.round(b.volume),
+      workouts: b.workouts,
+      avgRpe: b.avgRpe !== null ? Math.round(b.avgRpe * 10) / 10 : null,
+    }));
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
