@@ -56,4 +56,19 @@ export class StatsController {
   getClientWeeklyVolume(@Param("id") id: string) {
     return this.statsService.getWeeklyVolumeByClientId(id);
   }
+
+  @Get("leaderboard")
+  getLeaderboard() {
+    return this.statsService.getLeaderboard();
+  }
+
+  @Get("revenue")
+  getRevenueDashboard() {
+    return this.statsService.getRevenueDashboard();
+  }
+
+  @Get("client/:id/muscle-balance")
+  getMuscleBalance(@Param("id") id: string) {
+    return this.statsService.getMuscleBalance(id);
+  }
 }

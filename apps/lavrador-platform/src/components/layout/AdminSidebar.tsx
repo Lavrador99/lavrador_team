@@ -15,6 +15,7 @@ const ADMIN_NAV = [
   { path: '/workouts',     label: 'Templates',   icon: 'folder_open' },
   { path: '/nutrition',    label: 'Nutrição',    icon: 'nutrition' },
   { path: '/invoices',     label: 'Facturação',  icon: 'payments' },
+  { path: '/revenue',      label: 'Revenue',     icon: 'bar_chart' },
 ];
 
 export function AdminSidebar() {

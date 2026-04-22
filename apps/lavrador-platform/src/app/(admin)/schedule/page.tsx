@@ -147,6 +147,15 @@ export default function SchedulePage() {
         <span className="material-symbols-outlined text-sm">today</span>
         Hoje
       </button>
+      <a
+        href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'}/api/sessions/export/ical`}
+        download="lavrador-sessions.ics"
+        className="bg-surface-container-high text-on-surface font-label font-bold text-xs px-3 py-2.5 rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-1.5"
+        title="Exportar para iCal"
+      >
+        <span className="material-symbols-outlined text-base">calendar_export</span>
+        iCal
+      </a>
       <button
         onClick={() => openCreate()}
         className="kinetic-gradient text-on-primary font-headline font-bold text-sm px-5 py-2.5 rounded-lg shadow-ambient flex items-center gap-2 active:scale-95 transition-all"
