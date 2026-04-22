@@ -174,6 +174,9 @@ model Client {
   mealPlans        MealPlan[]
   metrics          ClientMetrics?
   bodyMeasurements BodyMeasurement[]
+  achievements     ClientAchievement[]
+  readinessLogs    ReadinessLog[]
+  automationRuns   AutomationRun[]
 
   @@map("clients")
 }
@@ -645,4 +648,76 @@ model OnboardingToken {
   pt User @relation(fields: [ptUserId], references: [id], onDelete: Cascade)
 
   @@map("onboarding_tokens")
+}
+
+// ─────────────────────────────────────────
+// ACHIEVEMENTS (badges)
+// ─────────────────────────────────────────
+
+enum AchievementType {
+  FIRST_WORKOUT
+  STREAK_3
+  STREAK_7
+  STREAK_30
+  WORKOUTS_10
+  WORKOUTS_50
+  WORKOUTS_100
+  FIRST_PR
+  PRS_5
+  CONSISTENCY_MONTH // 20+ workouts in a calendar month
+}
+
+model ClientAchievement {
+  id              String          @id @default(cuid())
+  clientId        String
+  type            AchievementType
+  earnedAt        DateTime        @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, type])
+  @@map("client_achievements")
+}
+
+// ─────────────────────────────────────────
+// READINESS CHECK-IN
+// ─────────────────────────────────────────
+
+model ReadinessLog {
+  id       String   @id @default(cuid())
+  clientId String
+  date     DateTime @default(now())
+  sleep    Int      // 1-5
+  stress   Int      // 1-5 (5 = max stress)
+  energy   Int      // 1-5
+  soreness Int      // 1-5 (5 = max soreness)
+  notes    String?
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("readiness_logs")
+}
+
+// ─────────────────────────────────────────
+// AUTOMATION SEQUENCES
+// ─────────────────────────────────────────
+
+enum AutomationTrigger {
+  ONBOARDING_COMPLETE
+  INACTIVITY_7_DAYS
+  STREAK_BROKEN
+}
+
+model AutomationRun {
+  id          String            @id @default(cuid())
+  trigger     AutomationTrigger
+  clientId    String
+  step        Int               @default(0)
+  triggeredAt DateTime          @default(now())
+  nextRunAt   DateTime?
+  completedAt DateTime?
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("automation_runs")
 }

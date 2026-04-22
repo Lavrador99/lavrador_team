@@ -135,6 +135,14 @@ export default function ClientDetailPage() {
   const { data: invoices = [] } = useSWR(tab === 'pagamentos' && clientId ? `invoices-${clientId}` : null, () => invoicesApi.getAll(clientId!));
   const { data: habits = [], mutate: mutateHabits } = useSWR(tab === 'habitos' && clientId ? `habits-${clientId}` : null, () => habitsApi.getByClient(clientId!));
   const { data: photos = [], mutate: mutatePhotos } = useSWR(tab === 'fotos' && clientId ? `photos-${clientId}` : null, () => progressPhotosApi.getByClient(clientId!));
+  const { data: recentReadiness = [] } = useSWR(
+    tab === 'overview' && clientId ? `readiness-${clientId}` : null,
+    () => fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'}/api/readiness/client/${clientId}?limit=3`, { credentials: 'include' }).then((r) => r.json()),
+  );
+  const { data: achievements = [] } = useSWR(
+    tab === 'overview' && clientId ? `achievements-${clientId}` : null,
+    () => fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'}/api/achievements/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+  );
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -302,6 +310,49 @@ export default function ClientDetailPage() {
               <p className="font-body text-sm text-on-surface">{user.client.notes}</p>
             </div>
           )}
+
+          {/* Readiness last 3 check-ins */}
+          {Array.isArray(recentReadiness) && recentReadiness.length > 0 && (
+            <div className="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+              <p className="label-category mb-3">Prontidão recente</p>
+              <div className="space-y-2">
+                {recentReadiness.map((log: any) => {
+                  const score = Math.round((((log.sleep + log.energy) / 2 - (log.stress + log.soreness) / 2) + 4) / 8 * 100);
+                  const color = score >= 70 ? 'text-primary' : score >= 40 ? 'text-amber-400' : 'text-red-400';
+                  return (
+                    <div key={log.id} className="flex items-center justify-between">
+                      <span className="font-label text-xs text-secondary">
+                        {new Date(log.date).toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      </span>
+                      <span className="font-label text-xs text-secondary">
+                        😴{log.sleep} ⚡{log.energy} 😤{log.stress} 💪{log.soreness}
+                      </span>
+                      <span className={`font-headline font-bold text-sm ${color}`}>{score}/100</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Achievements */}
+          {Array.isArray(achievements) && achievements.length > 0 && (
+            <div className="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+              <p className="label-category mb-3">Conquistas ({achievements.length})</p>
+              <div className="flex flex-wrap gap-2">
+                {achievements.map((a: any) => (
+                  <span
+                    key={a.id}
+                    title={a.description}
+                    className="flex items-center gap-1.5 bg-surface-container-high rounded-full px-3 py-1.5 font-label text-xs text-on-surface"
+                  >
+                    <span>{a.icon}</span>{a.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {(stats?.assessmentHistory?.length ?? 0) > 0 && (
             <div>
               <h2 className="font-headline font-bold text-lg text-on-surface mb-3">Histórico de avaliações</h2>
