@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AutomationsService } from '../automations/automations.service';
 import * as bcrypt from 'bcrypt';
 
 export interface OnboardingIntakeDto {
@@ -29,6 +30,7 @@ export class OnboardingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly automations: AutomationsService,
   ) {}
 
   async generateToken(ptUserId: string, clientName?: string, clientEmail?: string) {
@@ -135,6 +137,9 @@ export class OnboardingService {
     } catch {
       // non-critical
     }
+
+    // Trigger welcome automation sequence (fire-and-forget)
+    this.automations.trigger(result.client.id, 'ONBOARDING_COMPLETE').catch(() => {});
 
     return {
       clientId: result.client.id,

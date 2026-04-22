@@ -17,6 +17,7 @@ import { workoutBlocksSchema, workoutLogEntriesSchema } from "../schemas/workout
 import { extractPhaseDefaults } from "../../suggestion/services/acsm-guidelines.engine";
 import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { AchievementsService } from "../../achievements/achievements.service";
 
 @Injectable()
 export class WorkoutsService {
@@ -24,6 +25,7 @@ export class WorkoutsService {
     private readonly repo: WorkoutsRepository,
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly achievements: AchievementsService,
   ) {}
 
   async create(dto: CreateWorkoutDto) {
@@ -200,6 +202,9 @@ export class WorkoutsService {
 
     // Recalculate and persist client metrics
     this.recalculateClientMetrics(clientId).catch(() => {});
+
+    // Check and award achievements
+    this.achievements.checkAndAward(clientId).catch(() => {});
 
     return log;
   }
