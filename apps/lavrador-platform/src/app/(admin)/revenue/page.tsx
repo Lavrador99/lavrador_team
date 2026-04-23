@@ -3,7 +3,11 @@ import useSWR from 'swr';
 import { PageHeader } from '../../../components/ui';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
-const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then((r) => r.json());
+const fetcher = (url: string) =>
+  fetch(url, { credentials: 'include' }).then((r) => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  });
 
 interface RevenueData {
   thisMonth:    { revenue: number; invoices: number };
@@ -56,7 +60,7 @@ function StatCard({ label, value, sub, warn }: { label: string; value: string; s
 }
 
 export default function RevenuePage() {
-  const { data, isLoading } = useSWR<RevenueData>(`${API}/api/stats/revenue`, fetcher);
+  const { data, isLoading, error } = useSWR<RevenueData>(`${API}/api/stats/revenue`, fetcher);
 
   const fmt = (v: number) =>
     v.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -69,8 +73,12 @@ export default function RevenuePage() {
         subtitle="Resumo de faturação e pagamentos"
       />
 
-      {isLoading || !data ? (
+      {isLoading ? (
         <div className="text-center py-16 text-secondary font-label text-sm">A carregar...</div>
+      ) : error || !data ? (
+        <div className="text-center py-16 text-red-400 font-label text-sm">
+          Erro ao carregar dados de faturação
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 mb-4">
