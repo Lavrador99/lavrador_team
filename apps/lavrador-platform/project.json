@@ -1,5 +1,5 @@
 {
-  "name": "lavrador-platform",
+  "name": "web",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/lavrador-platform/src",
   "projectType": "application",
@@ -18,6 +18,13 @@
       "options": {
         "command": "next dev --port 4502",
         "cwd": "apps/lavrador-platform"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/apps/lavrador-platform"],
+      "options": {
+        "jestConfig": "apps/lavrador-platform/jest.config.ts"
       }
     }
   }
