@@ -1,16 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { SessionsRepository } from '../repositories/sessions.repository';
-import { CreateSessionDto, UpdateSessionDto, SessionFiltersDto } from '../types/sessions.dto';
 import { SessionType } from '@prisma/client';
 import { EmailService } from '../../email/email.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SessionsRepository } from '../repositories/sessions.repository';
+import {
+  CreateSessionDto,
+  SessionFiltersDto,
+  UpdateSessionDto,
+} from '../types/sessions.dto';
 
 @Injectable()
 export class SessionsService {
   constructor(
     private readonly repo: SessionsRepository,
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService,
+    private readonly emailService: EmailService
   ) {}
 
   async create(dto: CreateSessionDto) {
@@ -40,8 +44,15 @@ export class SessionsService {
     const date = new Date(session.scheduledAt);
     await this.emailService.sendSessionReminder(email, {
       clientName: client!.name ?? 'Cliente',
-      date: date.toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long' }),
-      time: date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+      date: date.toLocaleDateString('pt-PT', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+      }),
+      time: date.toLocaleTimeString('pt-PT', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
       duration: session.duration,
       type: session.type,
     });
@@ -104,8 +115,9 @@ export class SessionsService {
 
     for (const s of sessions) {
       const start = new Date(s.scheduledAt);
-      const end   = new Date(start.getTime() + (s.durationMin ?? 60) * 60_000);
-      const fmt   = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      const end = new Date(start.getTime() + (s.duration ?? 60) * 60_000);
+      const fmt = (d: Date) =>
+        d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
       lines.push('BEGIN:VEVENT');
       lines.push(`UID:${s.id}@lavrador.pt`);
