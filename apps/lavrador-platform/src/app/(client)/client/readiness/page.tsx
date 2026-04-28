@@ -37,8 +37,8 @@ function ScoreRing({ score }: { score: number }) {
           style={{ transition: 'stroke-dasharray 0.5s ease' }}
         />
       </svg>
-      <div className="absolute font-headline font-black text-xl text-on-surface" style={{ marginTop: -52 }}>{score}</div>
-      <p className="font-label text-xs text-secondary">Readiness score</p>
+      <div className="absolute font-headline font-black text-xl text-white" style={{ marginTop: -52 }}>{score}</div>
+      <p className="font-label text-xs text-zinc-400">Readiness score</p>
     </div>
   );
 }
@@ -83,17 +83,17 @@ export default function ReadinessPage() {
   return (
     <div>
       <div className="mb-6">
-        <p className="font-label text-xs text-outline uppercase tracking-widest mb-1">Diário</p>
-        <h1 className="font-headline font-black text-2xl text-on-surface">Check-in de Prontidão</h1>
-        <p className="font-label text-sm text-secondary mt-1">Como te sentes hoje?</p>
+        <p className="font-label text-xs text-zinc-500 uppercase tracking-widest mb-1">Diário</p>
+        <h1 className="font-headline font-black text-2xl text-white">Check-in de Prontidão</h1>
+        <p className="font-label text-sm text-zinc-400 mt-1">Como te sentes hoje?</p>
       </div>
 
       {(alreadyCheckedIn || done) ? (
         <div className="bg-zinc-900 rounded-xl p-6 text-center mb-6">
           <div className="text-4xl mb-3">✅</div>
-          <div className="font-headline font-bold text-on-surface mb-1">Check-in feito!</div>
-          <div className="font-label text-sm text-secondary">
-            Score de hoje: <span className="text-primary font-bold">
+          <div className="font-headline font-bold text-white mb-1">Check-in feito!</div>
+          <div className="font-label text-sm text-zinc-400">
+            Score de hoje: <span className="text-[#84d4d3] font-bold">
               {today && typeof today.sleep === 'number'
                 ? computeScore({ sleep: today.sleep, energy: today.energy, stress: today.stress, soreness: today.soreness })
                 : previewScore}/100
@@ -109,8 +109,8 @@ export default function ReadinessPage() {
           {METRICS.map(({ key, label, icons, hint }) => (
             <div key={key}>
               <div className="flex items-center justify-between mb-2">
-                <label className="font-label text-xs font-bold uppercase tracking-widest text-secondary">{label}</label>
-                <span className="font-label text-xs text-outline">{hint}</span>
+                <label className="font-label text-xs font-bold uppercase tracking-widest text-zinc-400">{label}</label>
+                <span className="font-label text-xs text-zinc-500">{hint}</span>
               </div>
               <div className="flex gap-2 justify-between">
                 {[1, 2, 3, 4, 5].map((v) => (
@@ -120,7 +120,7 @@ export default function ReadinessPage() {
                     className={`flex-1 rounded-xl py-3 flex flex-col items-center gap-1 transition-all text-xl ${
                       form[key] === v
                         ? 'bg-primary text-on-primary scale-105'
-                        : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'
+                        : 'bg-zinc-800 text-white hover:bg-zinc-700'
                     }`}
                   >
                     {icons[v - 1]}
@@ -132,7 +132,7 @@ export default function ReadinessPage() {
           ))}
 
           <div>
-            <label className="font-label text-xs font-bold uppercase tracking-widest text-secondary block mb-2">
+            <label className="font-label text-xs font-bold uppercase tracking-widest text-zinc-400 block mb-2">
               Notas (opcional)
             </label>
             <textarea
@@ -140,7 +140,7 @@ export default function ReadinessPage() {
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Dormi mal, tenho reuniões stressantes..."
               rows={2}
-              className="w-full bg-surface-container-high border-none rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-outline resize-none outline-none focus:ring-1 focus:ring-primary"
+              className="w-full bg-zinc-800 border-none rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-500 resize-none outline-none focus:ring-1 focus:ring-[#84d4d3]"
             />
           </div>
 
@@ -156,18 +156,18 @@ export default function ReadinessPage() {
 
       {history.length > 0 && (
         <div>
-          <h2 className="font-headline font-bold text-sm text-on-surface mb-3">Últimos 14 dias</h2>
+          <h2 className="font-headline font-bold text-sm text-white mb-3">Últimos 14 dias</h2>
           <div className="space-y-2">
             {history.slice(0, 7).map((log) => {
               const score = computeScore({ sleep: log.sleep, energy: log.energy, stress: log.stress, soreness: log.soreness });
-              const color = score >= 70 ? 'text-primary' : score >= 40 ? 'text-amber-400' : 'text-red-400';
+              const color = score >= 70 ? 'text-[#84d4d3]' : score >= 40 ? 'text-amber-400' : 'text-red-400';
               return (
                 <div key={log.id} className="bg-zinc-900 rounded-xl px-4 py-3 flex items-center justify-between">
-                  <div className="font-label text-sm text-on-surface">
+                  <div className="font-label text-sm text-white">
                     {new Date(log.date).toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric', month: 'short' })}
                   </div>
                   <div className="flex gap-3 items-center">
-                    <span className="font-label text-xs text-secondary">
+                    <span className="font-label text-xs text-zinc-400">
                       😴{log.sleep} ⚡{log.energy} 😤{log.stress} 💪{log.soreness}
                     </span>
                     <span className={`font-headline font-bold text-sm ${color}`}>{score}</span>
