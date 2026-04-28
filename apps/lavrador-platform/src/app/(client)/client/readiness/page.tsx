@@ -89,17 +89,19 @@ export default function ReadinessPage() {
       </div>
 
       {(alreadyCheckedIn || done) ? (
-        <div className="bg-surface-container-lowest rounded-xl p-6 text-center mb-6">
+        <div className="bg-zinc-900 rounded-xl p-6 text-center mb-6">
           <div className="text-4xl mb-3">✅</div>
           <div className="font-headline font-bold text-on-surface mb-1">Check-in feito!</div>
           <div className="font-label text-sm text-secondary">
             Score de hoje: <span className="text-primary font-bold">
-              {today ? computeScore({ sleep: today.sleep, energy: today.energy, stress: today.stress, soreness: today.soreness }) : previewScore}/100
+              {today && typeof today.sleep === 'number'
+                ? computeScore({ sleep: today.sleep, energy: today.energy, stress: today.stress, soreness: today.soreness })
+                : previewScore}/100
             </span>
           </div>
         </div>
       ) : (
-        <div className="bg-surface-container-lowest rounded-xl p-5 mb-6 space-y-5">
+        <div className="bg-zinc-900 rounded-xl p-5 mb-6 space-y-5">
           <div className="flex justify-center relative" style={{ height: 90 }}>
             <ScoreRing score={previewScore} />
           </div>
@@ -160,7 +162,7 @@ export default function ReadinessPage() {
               const score = computeScore({ sleep: log.sleep, energy: log.energy, stress: log.stress, soreness: log.soreness });
               const color = score >= 70 ? 'text-primary' : score >= 40 ? 'text-amber-400' : 'text-red-400';
               return (
-                <div key={log.id} className="bg-surface-container-lowest rounded-xl px-4 py-3 flex items-center justify-between">
+                <div key={log.id} className="bg-zinc-900 rounded-xl px-4 py-3 flex items-center justify-between">
                   <div className="font-label text-sm text-on-surface">
                     {new Date(log.date).toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric', month: 'short' })}
                   </div>

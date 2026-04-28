@@ -3,9 +3,17 @@ import { DashboardStats } from '@libs/types';
 import { PageHeader, KpiCard, SectionTitle, EmptyState } from '../../../components/ui';
 import { useDashboardStats } from '../../../lib/hooks/useStats';
 import { PtInsightsPanel } from '../../../components/dashboard/PtInsightsPanel';
+import useSWR from 'swr';
+import Link from 'next/link';
 
 export default function AdminDashboardPage() {
   const { data: stats, isLoading } = useDashboardStats();
+  const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
+  const { data: pendingFormChecks = [] } = useSWR<any[]>(
+    `${API}/api/form-checks/pending`,
+    (url: string) => fetch(url, { credentials: 'include' }).then(r => r.json()),
+    { refreshInterval: 60000 },
+  );
 
   const v = (key: keyof DashboardStats, pct = false) => {
     if (isLoading) return '—';
@@ -121,6 +129,30 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
+
+      {Array.isArray(pendingFormChecks) && pendingFormChecks.length > 0 && (
+        <div className="mt-8">
+          <SectionTitle>Análises de forma pendentes ({pendingFormChecks.length})</SectionTitle>
+          <div className="flex flex-col gap-2">
+            {pendingFormChecks.slice(0, 5).map((c: any) => (
+              <Link
+                key={c.id}
+                href={`/clients/${c.clientId}?tab=forma`}
+                className="flex items-center gap-4 bg-surface-container-lowest rounded-xl px-5 py-3.5 shadow-sm hover:bg-surface-container transition-colors"
+              >
+                <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>videocam</span>
+                <div className="flex-1 min-w-0">
+                  <span className="font-body text-sm font-semibold text-on-surface">{c.client?.name ?? '—'}</span>
+                  <span className="font-label text-xs text-secondary ml-2">{c.exerciseName}</span>
+                </div>
+                <span className="label-category text-secondary flex-shrink-0">
+                  {new Date(c.createdAt).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

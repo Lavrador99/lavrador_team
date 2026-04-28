@@ -163,7 +163,6 @@ export default function ClientDashboardPage() {
             { href: '/client/my-records', icon: 'emoji_events', label: 'Records pessoais', color: 'text-yellow-400' },
             { href: '/client/habits',     icon: 'task_alt',      label: 'Hábitos diários',  color: 'text-[#84d4d3]' },
             { href: '/client/stats',      icon: 'insights',      label: 'Analytics',         color: 'text-purple-400' },
-            { href: '/client/my-nutrition', icon: 'restaurant',  label: 'Nutrição',           color: 'text-orange-400' },
           ].map(({ href, icon, label, color }) => (
             <button key={href} onClick={() => router.push(href)}
               className="bg-zinc-900 rounded-2xl px-4 py-4 border border-zinc-800/60 text-left flex items-center gap-3 active:scale-95 transition-transform">

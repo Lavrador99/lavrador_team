@@ -30,9 +30,9 @@ export function QuickSubstituteModal({ exerciseId, exerciseName, clientFlags = [
   }, [exerciseId]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] bg-black/70 flex items-end" onClick={onClose}>
       <div
-        className="w-full bg-zinc-900 rounded-t-3xl border-t border-zinc-800/60 p-5 pb-8 max-h-[80vh] overflow-y-auto"
+        className="w-full bg-zinc-900 rounded-t-3xl border-t border-zinc-800/60 p-5 pb-28 max-h-[80vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

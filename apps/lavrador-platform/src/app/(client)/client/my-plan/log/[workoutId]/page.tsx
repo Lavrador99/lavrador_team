@@ -216,7 +216,7 @@ export default function WorkoutLoggerPage() {
         const ex = block.exercises[i];
         const key = makeKey(block.id, i);
         init[key] = Array.from({ length: ex.sets }, () => ({
-          reps: ex.reps?.replace(/[^0-9]/g, '') || '',
+          reps: ex.reps?.match(/\d+/)?.[0] || '',
           load: ex.load ? String(ex.load) : '',
           rpe: '',
           completed: false,
