@@ -204,7 +204,10 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     fetch(`${API}/api/onboarding/${token}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('invalid');
+        return r.json();
+      })
       .then((data) => {
         if (data.clientName) setForm((f) => ({ ...f, name: data.clientName ?? '' }));
         if (data.clientEmail) setForm((f) => ({ ...f, email: data.clientEmail ?? '' }));
