@@ -94,8 +94,9 @@ export class SuggestionController {
     );
   }
 
-  // Alternativas rápidas para substituição durante treino
+  // Alternativas rápidas para substituição durante treino — acessível a CLIENT e ADMIN
   @Get('alternatives/:exerciseId')
+  @Roles('ADMIN', 'CLIENT')
   getAlternatives(
     @Param('exerciseId') exerciseId: string,
     @Query('flags') flags?: string,
