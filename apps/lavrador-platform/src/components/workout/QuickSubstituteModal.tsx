@@ -8,6 +8,7 @@ interface Alternative {
   pattern: string;
   primaryMuscles: string[];
   score: number;
+  muscleGroup?: string;
 }
 
 interface Props {
@@ -59,7 +60,7 @@ export function QuickSubstituteModal({ exerciseId, exerciseName, clientFlags = [
             {alternatives.map((alt) => (
               <button
                 key={alt.exerciseId}
-                onClick={() => onSelect(alt)}
+                onClick={() => onSelect({ ...alt, muscleGroup: alt.primaryMuscles[0] })}
                 className="w-full text-left rounded-2xl bg-zinc-800 border border-zinc-700/60 px-4 py-3 active:scale-[0.98] transition-all hover:border-[#84d4d3]/30"
               >
                 <div className="font-semibold text-sm text-white mb-1">{alt.name}</div>

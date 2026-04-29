@@ -296,6 +296,7 @@ export default function WorkoutLoggerPage() {
             blockId: block.id,
             exerciseId: ex.exerciseId ?? ex.id,
             exerciseName: ex.exerciseName,
+            muscleGroup: ex.muscleGroup,
             sets: blockSets
               .filter((s) => s.completed)
               .map((s, idx) => ({
@@ -404,7 +405,7 @@ export default function WorkoutLoggerPage() {
     return <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] text-sm text-red-400">Treino não encontrado.</div>;
   }
 
-  function handleSubstitute(alt: { exerciseId: string; name: string }) {
+  function handleSubstitute(alt: { exerciseId: string; name: string; muscleGroup?: string }) {
     if (!substituteTarget || !workout) return;
     const { blockId, exIdx } = substituteTarget;
     setWorkout((prev) => {
@@ -413,7 +414,7 @@ export default function WorkoutLoggerPage() {
         if (b.id !== blockId) return b;
         const exercises = b.exercises.map((ex, i) => {
           if (i !== exIdx) return ex;
-          return { ...ex, exerciseId: alt.exerciseId, exerciseName: alt.name };
+          return { ...ex, exerciseId: alt.exerciseId, exerciseName: alt.name, muscleGroup: alt.muscleGroup };
         });
         return { ...b, exercises };
       });
