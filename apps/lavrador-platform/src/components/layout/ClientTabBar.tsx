@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 const CLIENT_TABS = [
   { path: '/client/dashboard',  label: 'Início',    icon: 'home' },
   { path: '/client/my-plan',    label: 'Treino',    icon: 'fitness_center' },
-  { path: '/client/nutrition',  label: 'Nutrição',  icon: 'restaurant' },
   { path: '/client/stats',      label: 'Dados',     icon: 'insights' },
   { path: '/client/messages',   label: 'Coach',     icon: 'forum' },
   { path: '/client/profile',    label: 'Perfil',    icon: 'person' },

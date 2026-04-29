@@ -146,7 +146,7 @@ export default function GuidedWorkoutPage() {
       init[key] = Array.from({ length: ex.sets }, (_, i) => {
         const prev = prevSetsData[i];
         return {
-          reps: prev?.reps ? String(prev.reps) : (ex.reps?.replace(/[^0-9]/g, '') || ''),
+          reps: prev?.reps ? String(prev.reps) : (ex.reps?.match(/\d+/)?.[0] || ''),
           load: prev?.load ? String(prev.load) : (ex.load ? String(ex.load) : ''),
           rpe: '',
           completed: false,
@@ -204,11 +204,6 @@ export default function GuidedWorkoutPage() {
           clearInterval(restRef.current!);
           releaseWakeLock();
           if (typeof navigator.vibrate === 'function') navigator.vibrate([300, 100, 300]);
-          // Auto-advance to next exercise when rest ends
-          setCurrentIdx((i) => {
-            const maxIdx = flat.length - 1;
-            return i < maxIdx ? i + 1 : i;
-          });
           return null;
         }
         return t - 1;
@@ -556,7 +551,6 @@ export default function GuidedWorkoutPage() {
                 setRestTimer(null);
                 if (restRef.current) clearInterval(restRef.current);
                 releaseWakeLock();
-                setCurrentIdx((i) => i < flat.length - 1 ? i + 1 : i);
               }}
               style={{
                 marginTop: '1.5rem', background: '#1a1a24', color: '#888', border: 'none',

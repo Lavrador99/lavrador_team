@@ -194,12 +194,15 @@ export default function ClientDetailPage() {
     if (!clientId || !newContract.title.trim() || !newContract.content.trim()) return;
     setSavingContract(true);
     try {
-      await fetch(`${API_BASE}/api/contracts`, {
+      const res = await fetch(`${API_BASE}/api/contracts`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ ...newContract, clientId }),
       });
+      if (!res.ok) throw new Error('Erro ao criar contrato');
       mutateContracts();
       setNewContract({ title: '', content: '' });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao criar contrato');
     } finally { setSavingContract(false); }
   }
 
