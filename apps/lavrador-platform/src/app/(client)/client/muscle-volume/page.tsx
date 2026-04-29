@@ -14,10 +14,19 @@ const PERIODS = [
 ] as const;
 
 const MUSCLE_PT: Record<string, string> = {
-  chest: 'Peito', back: 'Costas', shoulders: 'Ombros', biceps: 'Bíceps',
-  triceps: 'Tríceps', legs: 'Pernas', glutes: 'Glúteos', core: 'Core',
-  hamstrings: 'Isquiotibiais', quadriceps: 'Quadríceps', calves: 'Gémeos',
-  forearms: 'Antebraços', trapezius: 'Trapézio', arms: 'Braços', quads: 'Quadríceps',
+  peitoral:      'Peito',
+  dorsais:       'Costas',
+  deltoides:     'Ombros',
+  biceps:        'Bíceps',
+  triceps:       'Tríceps',
+  quadriceps:    'Quadríceps',
+  isquiotibiais: 'Isquiotibiais',
+  gluteos:       'Glúteos',
+  core:          'Core',
+  trapezio:      'Trapézio',
+  gastrocnemios: 'Gémeos',
+  antebraco:     'Antebraço',
+  adutores:      'Adutores',
 };
 
 // ─── Radar Chart ──────────────────────────────────────────────────────────────
@@ -66,26 +75,21 @@ function RadarChart({ scores }: { scores: number[] }) {
 // ─── Body Silhouette ──────────────────────────────────────────────────────────
 
 const FRONT_MAP: Record<string, Array<{ cx: number; cy: number; rx: number; ry: number }>> = {
-  chest:       [{ cx: 50, cy: 35, rx: 17, ry: 9 }],
-  shoulders:   [{ cx: 28, cy: 29, rx: 9,  ry: 8 }, { cx: 72, cy: 29, rx: 9, ry: 8 }],
-  biceps:      [{ cx: 22, cy: 48, rx: 7,  ry: 11 }, { cx: 78, cy: 48, rx: 7, ry: 11 }],
-  arms:        [{ cx: 22, cy: 48, rx: 7,  ry: 11 }, { cx: 78, cy: 48, rx: 7, ry: 11 }],
-  core:        [{ cx: 50, cy: 52, rx: 13, ry: 10 }],
-  quadriceps:  [{ cx: 37, cy: 72, rx: 11, ry: 16 }, { cx: 63, cy: 72, rx: 11, ry: 16 }],
-  quads:       [{ cx: 37, cy: 72, rx: 11, ry: 16 }, { cx: 63, cy: 72, rx: 11, ry: 16 }],
-  legs:        [{ cx: 37, cy: 72, rx: 11, ry: 16 }, { cx: 63, cy: 72, rx: 11, ry: 16 }],
+  peitoral:   [{ cx: 50, cy: 35, rx: 17, ry: 9 }],
+  deltoides:  [{ cx: 28, cy: 29, rx: 9,  ry: 8 }, { cx: 72, cy: 29, rx: 9, ry: 8 }],
+  biceps:     [{ cx: 22, cy: 48, rx: 7,  ry: 11 }, { cx: 78, cy: 48, rx: 7, ry: 11 }],
+  core:       [{ cx: 50, cy: 52, rx: 13, ry: 10 }],
+  quadriceps: [{ cx: 37, cy: 72, rx: 11, ry: 16 }, { cx: 63, cy: 72, rx: 11, ry: 16 }],
 };
 
 const BACK_MAP: Record<string, Array<{ cx: number; cy: number; rx: number; ry: number }>> = {
-  back:        [{ cx: 50, cy: 33, rx: 20, ry: 12 }],
-  trapezius:   [{ cx: 50, cy: 24, rx: 15, ry: 7 }],
-  hamstrings:  [{ cx: 37, cy: 73, rx: 10, ry: 15 }, { cx: 63, cy: 73, rx: 10, ry: 15 }],
-  glutes:      [{ cx: 39, cy: 58, rx: 11, ry: 9 },  { cx: 61, cy: 58, rx: 11, ry: 9 }],
-  triceps:     [{ cx: 23, cy: 46, rx: 7,  ry: 10 }, { cx: 77, cy: 46, rx: 7, ry: 10 }],
-  arms:        [{ cx: 23, cy: 46, rx: 7,  ry: 10 }, { cx: 77, cy: 46, rx: 7, ry: 10 }],
-  calves:      [{ cx: 38, cy: 88, rx: 7,  ry: 9 },  { cx: 62, cy: 88, rx: 7, ry: 9 }],
-  shoulders:   [{ cx: 29, cy: 28, rx: 9,  ry: 8 },  { cx: 71, cy: 28, rx: 9, ry: 8 }],
-  forearms:    [{ cx: 19, cy: 62, rx: 6,  ry: 10 }, { cx: 81, cy: 62, rx: 6, ry: 10 }],
+  dorsais:       [{ cx: 50, cy: 33, rx: 20, ry: 12 }],
+  trapezio:      [{ cx: 50, cy: 24, rx: 15, ry: 7 }],
+  isquiotibiais: [{ cx: 37, cy: 73, rx: 10, ry: 15 }, { cx: 63, cy: 73, rx: 10, ry: 15 }],
+  gluteos:       [{ cx: 39, cy: 58, rx: 11, ry: 9 },  { cx: 61, cy: 58, rx: 11, ry: 9 }],
+  triceps:       [{ cx: 23, cy: 46, rx: 7,  ry: 10 }, { cx: 77, cy: 46, rx: 7, ry: 10 }],
+  gastrocnemios: [{ cx: 38, cy: 88, rx: 7,  ry: 9 },  { cx: 62, cy: 88, rx: 7, ry: 9 }],
+  antebraco:     [{ cx: 19, cy: 62, rx: 6,  ry: 10 }, { cx: 81, cy: 62, rx: 6, ry: 10 }],
 };
 
 function BodySilhouette({ view, topMuscle, activeMuscles }: {

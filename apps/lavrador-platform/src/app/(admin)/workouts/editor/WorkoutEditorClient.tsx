@@ -442,7 +442,7 @@ export function WorkoutEditorClient({ workoutId }: Props) {
                 ) : filteredExercises.map((ex) => (
                   <ExerciseLibraryCard key={ex.id} ex={ex} blocks={blocks} onAdd={(blockId) => {
                     const { addExercise } = useWorkoutEditorStore.getState();
-                    addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name });
+                    addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.primaryMuscles?.[0] });
                   }} />
                 ))}
               </div>
@@ -459,7 +459,7 @@ export function WorkoutEditorClient({ workoutId }: Props) {
                       {frequentExercises.map((ex) => (
                         <ExerciseLibraryCard key={ex.id} ex={ex} blocks={blocks} onAdd={(blockId) => {
                           const { addExercise } = useWorkoutEditorStore.getState();
-                          addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name });
+                          addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.primaryMuscles?.[0] });
                         }} />
                       ))}
                     </div>
@@ -476,7 +476,7 @@ export function WorkoutEditorClient({ workoutId }: Props) {
                       {exs.slice(0, 6).map((ex) => (
                         <ExerciseLibraryCard key={ex.id} ex={ex} blocks={blocks} onAdd={(blockId) => {
                           const { addExercise } = useWorkoutEditorStore.getState();
-                          addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name });
+                          addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.primaryMuscles?.[0] });
                         }} />
                       ))}
                     </div>

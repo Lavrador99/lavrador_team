@@ -28,6 +28,7 @@ interface FlatExercise {
   exIdx: number;
   exerciseId?: string;
   exerciseName: string;
+  muscleGroup?: string;
   sets: number;
   reps: string;
   load?: number;
@@ -60,6 +61,7 @@ function flattenExercises(workout: WorkoutDto): FlatExercise[] {
         exIdx: i,
         exerciseId: ex.exerciseId ?? ex.id,
         exerciseName: ex.exerciseName,
+        muscleGroup: ex.muscleGroup,
         sets: ex.sets,
         reps: ex.reps,
         load: ex.load,
@@ -256,6 +258,7 @@ export default function GuidedWorkoutPage() {
           blockId: ex.blockId,
           exerciseId: ex.exerciseId,
           exerciseName: ex.exerciseName,
+          muscleGroup: ex.muscleGroup,
           sets: blockSets
             .filter((s) => s.completed)
             .map((s, idx) => ({

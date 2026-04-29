@@ -2,6 +2,30 @@ import { Injectable } from "@nestjs/common";
 import { WorkoutStatus } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 
+const MUSCLE_CANONICAL: Record<string, string> = {
+  peitoral: "peitoral", peitoral_superior: "peitoral", peitoral_inferior: "peitoral",
+  dorsal: "dorsais", dorsais: "dorsais", romboides: "dorsais",
+  eretores_espinhais: "dorsais", quadrado_lombar: "dorsais",
+  deltoides: "deltoides", deltoides_anterior: "deltoides",
+  deltoides_lateral: "deltoides", deltoides_posterior: "deltoides",
+  manguito_rotador: "deltoides",
+  biceps: "biceps", braquial: "biceps",
+  triceps: "triceps", triceps_longo: "triceps",
+  quadriceps: "quadriceps",
+  isquiotibiais: "isquiotibiais",
+  gluteos: "gluteos", gluteos_medios: "gluteos",
+  core: "core", reto_abdominal: "core", transverso_abdominal: "core",
+  obliquos: "core", iliopsoas: "core",
+  trapezio: "trapezio",
+  gastrocnemios: "gastrocnemios", soleo: "gastrocnemios",
+  antebraco: "antebraco", braquioradial: "antebraco",
+  adutores: "adutores", abdutores: "adutores",
+};
+
+function canonicalizeMuscle(raw: string): string {
+  return MUSCLE_CANONICAL[raw] ?? raw;
+}
+
 function getWeekLabel(date: Date): string {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -178,6 +202,24 @@ export class WorkoutsRepository {
       select: { date: true, entries: true },
     });
 
+    // Build exerciseId → canonical muscle group lookup for entries without muscleGroup
+    const allEntries = logs.flatMap((l) => l.entries as any[]);
+    const exerciseIds = [
+      ...new Set(allEntries.map((e) => e.exerciseId).filter(Boolean)),
+    ];
+    const exercises = exerciseIds.length
+      ? await this.prisma.exercise.findMany({
+          where: { id: { in: exerciseIds } },
+          select: { id: true, primaryMuscles: true },
+        })
+      : [];
+    const exerciseMuscleMap = new Map(
+      exercises.map((ex) => [
+        ex.id,
+        ex.primaryMuscles[0] ? canonicalizeMuscle(ex.primaryMuscles[0]) : "outro",
+      ]),
+    );
+
     // Accumulate total completed sets per muscle group
     const volumeMap: Record<string, number> = {};
     const weeklyMap: Record<string, Record<string, number>> = {};
@@ -186,7 +228,11 @@ export class WorkoutsRepository {
       const weekLabel = getWeekLabel(log.date);
       const entries = log.entries as any[];
       for (const entry of entries) {
-        const muscle: string = entry.muscleGroup ?? "outro";
+        const rawMuscle: string =
+          entry.muscleGroup ??
+          exerciseMuscleMap.get(entry.exerciseId) ??
+          "outro";
+        const muscle = canonicalizeMuscle(rawMuscle);
         const completedSets = (entry.sets as any[]).filter(
           (s: any) => s.completed,
         ).length;
