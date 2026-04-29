@@ -1,0 +1,6 @@
+{
+  "buildCommand": "yarn nx build lavrador-platform",
+  "outputDirectory": "apps/lavrador-platform/.next",
+  "framework": "nextjs",
+  "installCommand": "yarn install --frozen-lockfile"
+}
