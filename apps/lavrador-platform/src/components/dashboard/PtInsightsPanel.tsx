@@ -37,7 +37,7 @@ export function PtInsightsPanel() {
             return (
               <div key={day} className="flex-1 flex flex-col items-center gap-1">
                 <div className="w-full rounded-sm transition-all" style={{ height: `${pct}%`, minHeight: 2, background: sessions > 0 ? '#84d4d3' : '#27272a' }} />
-                <span className="text-[9px] text-zinc-500 font-bold">{day}</span>
+                <span className="text-[11px] text-zinc-500 font-bold">{day}</span>
               </div>
             );
           })}

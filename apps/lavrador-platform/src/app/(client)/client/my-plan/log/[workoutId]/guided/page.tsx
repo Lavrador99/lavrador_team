@@ -471,7 +471,7 @@ export default function GuidedWorkoutPage() {
           {/* Previous session */}
           {prevSets && prevSets.length > 0 && (
             <div className="border-t border-zinc-800/60 pt-2 mt-2">
-              <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">Sessão anterior</div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">Sessão anterior</div>
               <div className="flex flex-wrap gap-1.5">
                 {prevSets.map((s, i) => (
                   <span key={i} className="text-[11px] text-zinc-300 bg-zinc-800 px-2 py-1 rounded-lg tabular-nums">

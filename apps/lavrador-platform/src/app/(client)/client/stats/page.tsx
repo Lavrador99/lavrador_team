@@ -33,7 +33,7 @@ function WeeklyVolumeChart({ data }: { data: WeeklyBucket[] }) {
       </div>
       <div className="flex gap-1 mt-1">
         {data.map((d, i) => (
-          <div key={d.week} className={`flex-1 text-center text-[8px] font-bold truncate ${i === data.length - 1 ? 'text-[#c8f542]' : 'text-zinc-600'}`}>
+          <div key={d.week} className={`flex-1 text-center text-[10px] font-bold truncate ${i === data.length - 1 ? 'text-[#c8f542]' : 'text-zinc-600'}`}>
             {d.week}
           </div>
         ))}

@@ -186,7 +186,7 @@ export default function BodyMeasurementsPage() {
                   <div className={`font-[Manrope] font-black text-xl ${m.color}`}>
                     {val != null ? val : '—'}<span className="text-xs ml-1 opacity-60">{m.unit}</span>
                   </div>
-                  <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 mt-1">{m.label}</div>
+                  <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-600 mt-1">{m.label}</div>
                 </button>
               );
             })}

@@ -77,6 +77,39 @@
 }
 
 @layer utilities {
+  /* ── Client typography scale ─────────────────────────────────────────── */
+
+  /* Eyebrow / category label — minimum legible size */
+  .client-label {
+    font-size: 0.6875rem; /* 11px */
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #a1a1aa; /* zinc-400 */
+  }
+
+  /* Micro stat label */
+  .client-label-micro {
+    font-size: 0.625rem; /* 10px */
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: #71717a; /* zinc-500 */
+  }
+
+  /* Body copy minimum */
+  .client-body {
+    font-size: 0.8125rem; /* 13px */
+    color: #d4d4d8; /* zinc-300 */
+  }
+
+  /* ── Client card ─────────────────────────────────────────────────────── */
+  .client-card {
+    background: #111118;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 1rem;
+  }
+
   /* Kinetic gradient — signature primary button texture */
   .kinetic-gradient {
     background: linear-gradient(135deg, #005050 0%, #006a6a 100%);

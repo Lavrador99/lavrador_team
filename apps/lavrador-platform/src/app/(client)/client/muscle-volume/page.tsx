@@ -230,7 +230,7 @@ export default function MuscleVolumePage() {
     <div className="pb-6">
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="mb-5">
-        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-1">Analytics Dashboard</div>
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-1">Analytics Dashboard</div>
         <div className="flex items-center justify-between gap-2">
           <h1 className="font-[Manrope] font-black text-2xl text-white leading-tight">Volume Analytics</h1>
           <div className="flex gap-1 flex-shrink-0 bg-zinc-900 border border-zinc-800/60 rounded-xl p-0.5">
@@ -238,7 +238,7 @@ export default function MuscleVolumePage() {
               <button
                 key={p.weeks}
                 onClick={() => setWeeks(p.weeks)}
-                className={`text-[9px] font-bold px-2.5 py-1.5 rounded-lg transition-all ${
+                className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all ${
                   weeks === p.weeks
                     ? 'bg-zinc-700 text-white'
                     : 'text-zinc-500 hover:text-zinc-300'
@@ -263,14 +263,14 @@ export default function MuscleVolumePage() {
             {/* Activity Breakdown */}
             <div className="bg-zinc-900 rounded-2xl p-3.5 border border-zinc-800/60 flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">Actividade</div>
-                <div className="text-[7px] font-bold uppercase tracking-wider text-zinc-700 bg-zinc-800 px-1.5 py-0.5 rounded-md">7 dias</div>
+                <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">Actividade</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-700 bg-zinc-800 px-1.5 py-0.5 rounded-md">7 dias</div>
               </div>
               {/* Week dots */}
               <div className="flex justify-between">
                 {last7.map((d, i) => (
                   <div key={i} className="flex flex-col items-center gap-1">
-                    <div className="text-[7px] font-bold text-zinc-600 uppercase">{d.label}</div>
+                    <div className="text-[10px] font-bold text-zinc-600 uppercase">{d.label}</div>
                     <div
                       className={`w-4 h-4 rounded-full transition-colors ${
                         d.active
@@ -286,13 +286,13 @@ export default function MuscleVolumePage() {
               {/* Stats */}
               <div className="border-t border-zinc-800/50 pt-2.5 space-y-2">
                 <div>
-                  <div className="text-[8px] font-bold uppercase tracking-widest text-zinc-600">Consistência</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Consistência</div>
                   <div className="font-[Manrope] font-black text-xl text-white leading-none mt-0.5">
                     {stats?.attendanceRate ?? 0}%
                   </div>
                 </div>
                 <div>
-                  <div className="text-[8px] font-bold uppercase tracking-widest text-zinc-600">Active Streak</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Active Streak</div>
                   <div className="font-[Manrope] font-black text-base text-white leading-none mt-0.5">
                     {stats?.workoutStreak ?? 0}
                     <span className="text-xs font-bold text-zinc-500 ml-1">dias</span>
@@ -303,19 +303,19 @@ export default function MuscleVolumePage() {
 
             {/* Muscle Engagement */}
             <div className="bg-zinc-900 rounded-2xl p-3.5 border border-zinc-800/60 flex flex-col">
-              <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Músculo</div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Músculo</div>
               <div className="flex gap-1 flex-1">
                 <div className="flex-1 flex flex-col items-center">
                   <div className="w-full flex-1" style={{ maxHeight: 100 }}>
                     <BodySilhouette view="front" topMuscle={primaryMuscle} activeMuscles={activeMuscles} />
                   </div>
-                  <div className="text-[7px] font-bold text-zinc-600 uppercase tracking-wider mt-1">Frente</div>
+                  <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider mt-1">Frente</div>
                 </div>
                 <div className="flex-1 flex flex-col items-center">
                   <div className="w-full flex-1" style={{ maxHeight: 100 }}>
                     <BodySilhouette view="back" topMuscle={primaryMuscle} activeMuscles={activeMuscles} />
                   </div>
-                  <div className="text-[7px] font-bold text-zinc-600 uppercase tracking-wider mt-1">Costas</div>
+                  <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider mt-1">Costas</div>
                 </div>
               </div>
               <div className="flex gap-2 mt-2 justify-center flex-wrap">
@@ -325,7 +325,7 @@ export default function MuscleVolumePage() {
                 ].map(({ label, cls }) => (
                   <div key={label} className="flex items-center gap-1">
                     <div className={`w-2 h-2 rounded-full ${cls}`} />
-                    <span className="text-[7px] font-bold text-zinc-500">{label}</span>
+                    <span className="text-[10px] font-bold text-zinc-500">{label}</span>
                   </div>
                 ))}
               </div>
@@ -354,7 +354,7 @@ export default function MuscleVolumePage() {
                   { label: 'PRESENÇA',  value: `${stats?.attendanceRate ?? 0}%` },
                 ].map(({ label, value }) => (
                   <div key={label}>
-                    <div className="text-[7px] font-bold uppercase tracking-widest text-zinc-600">{label}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{label}</div>
                     <div className="font-[Manrope] font-black text-lg text-white leading-none mt-0.5">{value}</div>
                   </div>
                 ))}
@@ -363,7 +363,7 @@ export default function MuscleVolumePage() {
 
             {/* Sets per Muscle Group */}
             <div className="bg-zinc-900 rounded-2xl p-3.5 border border-zinc-800/60">
-              <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-3">Séries / Grupo</div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-3">Séries / Grupo</div>
               {cards.length === 0 ? (
                 <div className="py-8 text-[10px] text-zinc-600 text-center">Sem dados</div>
               ) : (
@@ -374,8 +374,8 @@ export default function MuscleVolumePage() {
                     return (
                       <div key={c.muscle}>
                         <div className="flex items-center justify-between mb-1">
-                          <div className="text-[8px] font-bold tracking-wider text-zinc-400 truncate">{label}</div>
-                          <div className="text-[8px] font-black text-zinc-300 ml-1 flex-shrink-0">{c.sets} SÉRIES</div>
+                          <div className="text-[10px] font-bold tracking-wider text-zinc-400 truncate">{label}</div>
+                          <div className="text-[10px] font-black text-zinc-300 ml-1 flex-shrink-0">{c.sets} SÉRIES</div>
                         </div>
                         <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                           <div
@@ -394,13 +394,13 @@ export default function MuscleVolumePage() {
           {/* ── Exercise Leaderboard ─────────────────────────────────────── */}
           {leaderboard.length > 0 && (
             <div className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800/60 mb-3">
-              <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-3">Exercise Leaderboard</div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-3">Exercise Leaderboard</div>
               {/* Header */}
               <div className="flex items-center px-1 mb-1.5">
                 <div className="w-7 mr-2" />
-                <div className="flex-1 text-[7px] font-bold uppercase tracking-widest text-zinc-600">Exercício</div>
-                <div className="w-14 text-right text-[7px] font-bold uppercase tracking-widest text-zinc-600">Carga</div>
-                <div className="w-14 text-right text-[7px] font-bold uppercase tracking-widest text-zinc-600">1RM est.</div>
+                <div className="flex-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Exercício</div>
+                <div className="w-14 text-right text-[10px] font-bold uppercase tracking-widest text-zinc-400">Carga</div>
+                <div className="w-14 text-right text-[10px] font-bold uppercase tracking-widest text-zinc-400">1RM est.</div>
                 <div className="w-6" />
               </div>
               {/* Rows */}
@@ -416,7 +416,7 @@ export default function MuscleVolumePage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-white truncate leading-tight">{r.exerciseName}</div>
-                      <div className="text-[8px] text-zinc-600 mt-0.5">
+                      <div className="text-[10px] text-zinc-600 mt-0.5">
                         {daysAgo === 0 ? 'hoje' : daysAgo === 1 ? 'ontem' : `há ${daysAgo}d`}
                       </div>
                     </div>
@@ -439,12 +439,12 @@ export default function MuscleVolumePage() {
           {/* ── Global Strength Level ────────────────────────────────────── */}
           {hasLifts && (
             <div className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800/60">
-              <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-3">Nível de Força Global</div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-3">Nível de Força Global</div>
               <div className="grid grid-cols-3 gap-2">
                 {bigLifts.map(({ key, record }) => {
                   if (!record) return (
                     <div key={key} className="rounded-xl bg-zinc-800/40 border border-zinc-800/40 p-2.5 flex flex-col items-center justify-center min-h-[90px]">
-                      <div className="text-[8px] font-bold uppercase tracking-widest text-zinc-600 mb-1">{key}</div>
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">{key}</div>
                       <div className="font-[Manrope] font-black text-xl text-zinc-700">—</div>
                     </div>
                   );
@@ -453,15 +453,15 @@ export default function MuscleVolumePage() {
                   return (
                     <div key={key} className="rounded-xl bg-zinc-800/40 border border-zinc-800/40 p-2.5">
                       <div className="flex items-center justify-between mb-1.5">
-                        <div className="text-[8px] font-bold uppercase tracking-widest text-zinc-500">{key}</div>
-                        <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded-md ${lvl.cls}`}>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">{key}</div>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${lvl.cls}`}>
                           {lvl.label}
                         </span>
                       </div>
                       <div className="font-[Manrope] font-black text-xl text-white leading-none mb-0.5">
                         {kg}<span className="text-[10px] font-bold text-zinc-500 ml-0.5">kg</span>
                       </div>
-                      <div className="text-[8px] text-zinc-600 mb-1.5">Top {lvl.top}% grupo etário</div>
+                      <div className="text-[10px] text-zinc-600 mb-1.5">Top {lvl.top}% grupo etário</div>
                       <div className="h-1 bg-zinc-700 rounded-full overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-700"
                           style={{ width: `${lvl.pct}%`, background: '#84d4d3' }} />

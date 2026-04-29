@@ -546,14 +546,14 @@ export default function WorkoutLoggerPage() {
                     {ex.notes && <div className="text-[11px] text-zinc-400 mt-0.5 italic truncate">{ex.notes}</div>}
                     {prevSets && prevSets.length > 0 && (
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">anterior:</span>
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">anterior:</span>
                         {prevSets.slice(0, 4).map((s, i) => (
                           <span key={i} className="text-[10px] text-zinc-400 bg-zinc-800/80 px-1.5 py-0.5 rounded-md tabular-nums">
                             {s.reps}r{s.load ? ` × ${s.load}kg` : ''}
                           </span>
                         ))}
                         {prevSets.length > 4 && (
-                          <span className="text-[9px] text-zinc-600">+{prevSets.length - 4}</span>
+                          <span className="text-[11px] text-zinc-600">+{prevSets.length - 4}</span>
                         )}
                       </div>
                     )}
@@ -609,7 +609,7 @@ export default function WorkoutLoggerPage() {
                         {/* Number + 1RM */}
                         <div className="flex flex-col items-center justify-center">
                           <span className="text-[11px] font-bold text-zinc-400">{sIdx + 1}</span>
-                          {rm && <span className="text-[9px] text-[#84d4d3] leading-none">~{rm}</span>}
+                          {rm && <span className="text-[11px] text-[#84d4d3] leading-none">~{rm}</span>}
                         </div>
 
                         {/* Reps */}
@@ -753,7 +753,7 @@ export default function WorkoutLoggerPage() {
                         <div className="font-semibold text-sm text-white truncate">{ex.name}</div>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {(ex.primaryMuscles ?? []).slice(0, 2).map((m: string) => (
-                            <span key={m} className="text-[9px] font-bold uppercase text-[#84d4d3] bg-[#84d4d3]/10 px-1.5 py-0.5 rounded-lg">{m}</span>
+                            <span key={m} className="text-[11px] font-bold uppercase text-[#84d4d3] bg-[#84d4d3]/10 px-1.5 py-0.5 rounded-lg">{m}</span>
                           ))}
                         </div>
                       </div>

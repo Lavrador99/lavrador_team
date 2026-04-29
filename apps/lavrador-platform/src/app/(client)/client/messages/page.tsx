@@ -126,7 +126,7 @@ export default function ClientMessagesPage() {
                       style={isMine ? { background: 'linear-gradient(135deg, #84d4d3, #005050)' } : {}}
                     >
                       <p className={`text-sm ${isMine ? 'text-black' : 'text-white'}`}>{msg.content}</p>
-                      <p className={`text-[9px] mt-1 ${isMine ? 'text-black/50' : 'text-zinc-600'}`}>
+                      <p className={`text-[11px] mt-1 ${isMine ? 'text-black/50' : 'text-zinc-600'}`}>
                         {new Date(msg.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>

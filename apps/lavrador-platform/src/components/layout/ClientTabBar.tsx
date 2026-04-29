@@ -35,7 +35,7 @@ export function ClientTabBar() {
                 {tab.icon}
               </span>
               <span
-                className="text-[9px] font-bold uppercase tracking-[0.06em] transition-colors"
+                className="text-[11px] font-bold uppercase tracking-[0.06em] transition-colors"
                 style={{ color: isActive ? 'var(--client-accent)' : 'var(--client-text-muted)' }}
               >
                 {tab.label}

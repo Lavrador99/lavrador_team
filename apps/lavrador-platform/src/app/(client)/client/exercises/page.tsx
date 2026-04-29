@@ -175,11 +175,11 @@ export default function ClientExercisesPage() {
               <div className="p-3">
                 <div className="font-semibold text-xs text-white mb-1.5 line-clamp-2 leading-tight">{ex.name}</div>
                 <div className="flex items-center gap-1 flex-wrap">
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg ${LEVEL_STYLE[ex.level] ?? 'text-zinc-400 bg-zinc-800'}`}>
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-lg ${LEVEL_STYLE[ex.level] ?? 'text-zinc-400 bg-zinc-800'}`}>
                     {LEVEL_LABEL[ex.level]}
                   </span>
                   {ex.primaryMuscles[0] && (
-                    <span className="text-[9px] text-zinc-600 truncate">{ex.primaryMuscles[0].replace(/_/g, ' ')}</span>
+                    <span className="text-[11px] text-zinc-600 truncate">{ex.primaryMuscles[0].replace(/_/g, ' ')}</span>
                   )}
                 </div>
               </div>
