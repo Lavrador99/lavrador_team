@@ -6,8 +6,8 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes
-  if (pathname === '/login' || pathname === '/') {
-    if (token) {
+  if (pathname === '/login' || pathname === '/' || pathname.startsWith('/onboarding')) {
+    if (token && (pathname === '/login' || pathname === '/')) {
       // Already logged in — redirect based on role stored in token payload
       // We can't decode JWT in Edge without a library; redirect to a universal entry
       return NextResponse.redirect(new URL('/entry', request.url));

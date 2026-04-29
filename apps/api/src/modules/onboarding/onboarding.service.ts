@@ -46,7 +46,7 @@ export class OnboardingService {
       },
     });
 
-    const appUrl = process.env.APP_URL ?? process.env.PLATFORM_URL ?? 'http://localhost:3000';
+    const appUrl = process.env.APP_URL ?? process.env.PLATFORM_URL ?? 'http://localhost:4501';
     return {
       token: record.token,
       url: `${appUrl}/onboarding/${record.token}`,

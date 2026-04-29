@@ -376,12 +376,22 @@ export class SuggestionService {
 
     if (avoidPatterns.has(original.pattern)) return [];
 
+    // Levels broadened: always include INICIANTE + original level tier
+    const levels = this.getLevelsForClient(original.level);
+
     const candidates = await this.prisma.exercise.findMany({
       where: {
         isActive: true,
         id: { not: exerciseId },
         pattern: original.pattern,
-        level: { in: this.getLevelsForClient(original.level) },
+        level: { in: levels },
+        NOT: clientFlags.length
+          ? {
+              clinicalNotes: {
+                hasSome: clientFlags,
+              },
+            }
+          : undefined,
       },
       select: {
         id: true,
@@ -398,7 +408,21 @@ export class SuggestionService {
       take: limit * 3,
     });
 
-    return candidates
+    // If no candidates with same level, broaden to all levels
+    const pool = candidates.length > 0 ? candidates : await this.prisma.exercise.findMany({
+      where: {
+        isActive: true,
+        id: { not: exerciseId },
+        pattern: original.pattern,
+      },
+      select: {
+        id: true, name: true, pattern: true, primaryMuscles: true, equipment: true,
+        preferenceScores: { select: { score: true }, take: 1, orderBy: { score: 'desc' } },
+      },
+      take: limit * 3,
+    });
+
+    return pool
       .map((ex) => ({
         exerciseId: ex.id,
         name: ex.name,

@@ -75,22 +75,22 @@ export function ClientTimeline({ clientId }: Props) {
 
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="bg-zinc-800/60 rounded-xl px-3 py-2">
-              <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">Nível</div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">Nível</div>
               <div className="font-bold text-sm text-white mt-0.5">{clinical.level}</div>
             </div>
             <div className="bg-zinc-800/60 rounded-xl px-3 py-2">
-              <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">Objetivo</div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">Objetivo</div>
               <div className="font-bold text-sm text-white mt-0.5 truncate">{String(clinical.objetivo ?? '—')}</div>
             </div>
             {clinical.pas && (
               <div className="bg-zinc-800/60 rounded-xl px-3 py-2">
-                <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">Pressão arterial</div>
+                <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">Pressão arterial</div>
                 <div className="font-bold text-sm text-white mt-0.5">{String(clinical.pas)}/{String(clinical.pad)} mmHg</div>
               </div>
             )}
             {clinical.diasSemana && (
               <div className="bg-zinc-800/60 rounded-xl px-3 py-2">
-                <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">Dias/semana</div>
+                <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">Dias/semana</div>
                 <div className="font-bold text-sm text-white mt-0.5">{String(clinical.diasSemana)}x</div>
               </div>
             )}
@@ -163,7 +163,7 @@ export function ClientTimeline({ clientId }: Props) {
                         <div className="text-[11px] text-zinc-400 mt-0.5 ml-5">{event.subtitle}</div>
                       )}
                       {event.badge && event.type === 'PERSONAL_RECORD' && (
-                        <span className="inline-block mt-1 ml-5 text-[9px] font-black uppercase tracking-widest text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded">
+                        <span className="inline-block mt-1 ml-5 text-[11px] font-black uppercase tracking-widest text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded">
                           NOVO PR
                         </span>
                       )}

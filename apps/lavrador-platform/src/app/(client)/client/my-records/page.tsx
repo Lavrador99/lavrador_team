@@ -145,7 +145,7 @@ export default function MyRecordsPage() {
               </div>
               <div>
                 <div className="font-[Manrope] font-black text-sm text-white tracking-wider">{cat.label}</div>
-                <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">{cat.sub}</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500">{cat.sub}</div>
               </div>
             </div>
 

@@ -88,7 +88,7 @@ export default function MyNutritionPage() {
             {MACROS.map(({ label, color, key }) => (
               <div key={key} className="bg-zinc-900 rounded-2xl p-3 text-center border border-zinc-800/60">
                 <div className="font-[Manrope] font-black text-lg text-white">{macroValues[key]}</div>
-                <div className="text-[9px] font-bold uppercase tracking-widest mt-1" style={{ color }}>{label}</div>
+                <div className="text-[11px] font-bold uppercase tracking-widest mt-1" style={{ color }}>{label}</div>
               </div>
             ))}
           </div>

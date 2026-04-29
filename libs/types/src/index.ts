@@ -459,6 +459,78 @@ export interface UpdateWorkoutRequest {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MUSCLE GROUPS — canonical Portuguese names
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type MuscleGroup =
+  | 'peitoral'
+  | 'dorsais'
+  | 'deltoides'
+  | 'biceps'
+  | 'triceps'
+  | 'quadriceps'
+  | 'isquiotibiais'
+  | 'gluteos'
+  | 'core'
+  | 'trapezio'
+  | 'gastrocnemios'
+  | 'antebraco'
+  | 'adutores';
+
+export const MUSCLE_LABEL: Record<MuscleGroup, string> = {
+  peitoral:      'Peito',
+  dorsais:       'Costas',
+  deltoides:     'Ombros',
+  biceps:        'Bíceps',
+  triceps:       'Tríceps',
+  quadriceps:    'Quadríceps',
+  isquiotibiais: 'Isquiotibiais',
+  gluteos:       'Glúteos',
+  core:          'Core',
+  trapezio:      'Trapézio',
+  gastrocnemios: 'Gémeos',
+  antebraco:     'Antebraço',
+  adutores:      'Adutores',
+};
+
+/** Maps granular seed-data muscle names to canonical MuscleGroup */
+export const MUSCLE_CANONICAL: Record<string, MuscleGroup> = {
+  peitoral:              'peitoral',
+  peitoral_superior:     'peitoral',
+  peitoral_inferior:     'peitoral',
+  dorsal:                'dorsais',
+  dorsais:               'dorsais',
+  romboides:             'dorsais',
+  eretores_espinhais:    'dorsais',
+  quadrado_lombar:       'dorsais',
+  deltoides:             'deltoides',
+  deltoides_anterior:    'deltoides',
+  deltoides_lateral:     'deltoides',
+  deltoides_posterior:   'deltoides',
+  manguito_rotador:      'deltoides',
+  biceps:                'biceps',
+  braquial:              'biceps',
+  triceps:               'triceps',
+  triceps_longo:         'triceps',
+  quadriceps:            'quadriceps',
+  isquiotibiais:         'isquiotibiais',
+  gluteos:               'gluteos',
+  gluteos_medios:        'gluteos',
+  core:                  'core',
+  reto_abdominal:        'core',
+  transverso_abdominal:  'core',
+  obliquos:              'core',
+  iliopsoas:             'core',
+  trapezio:              'trapezio',
+  gastrocnemios:         'gastrocnemios',
+  soleo:                 'gastrocnemios',
+  antebraco:             'antebraco',
+  braquioradial:         'antebraco',
+  adutores:              'adutores',
+  abdutores:             'adutores',
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // WORKOUT LOGS (progresso do cliente)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -468,6 +540,7 @@ export interface WorkoutLogEntry {
   blockId: string;
   exerciseId: string;
   exerciseName: string;
+  muscleGroup?: string;
   sets: {
     setNumber: number;
     reps: number;
