@@ -5,6 +5,7 @@ import { WorkoutDto, WorkoutBlock, WorkoutLogEntry, SetType, AchievementDto } fr
 import { workoutsApi } from '../../../../../../../lib/api/workouts.api';
 import { cacheWorkout, getCachedWorkout, queuePendingLog, getPendingCount } from '../../../../../../../lib/db/workoutDb';
 import { AchievementCelebration } from '../../../../../../../components/AchievementCelebration';
+import { QuickSubstituteModal } from '../../../../../../../components/workout/QuickSubstituteModal';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
 
@@ -103,6 +104,7 @@ export default function GuidedWorkoutPage() {
   const [done, setDone] = useState(false);
   const [lastLog, setLastLog] = useState<{ entries: { exerciseId?: string; exerciseName: string; sets: { reps: number; load?: number }[] }[] } | null>(null);
   const [newAchievement, setNewAchievement] = useState<AchievementDto | null>(null);
+  const [substituteTarget, setSubstituteTarget] = useState<{ exIdx: number; exerciseId: string; exerciseName: string } | null>(null);
 
   const restRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -245,6 +247,18 @@ export default function GuidedWorkoutPage() {
     )?.sets ?? null;
   }
 
+  function handleSubstituteGuided(alt: { exerciseId: string; name: string; muscleGroup?: string }) {
+    if (!substituteTarget) return;
+    setFlat((prev) =>
+      prev.map((ex, i) =>
+        i === substituteTarget.exIdx
+          ? { ...ex, exerciseId: alt.exerciseId, exerciseName: alt.name, muscleGroup: alt.muscleGroup }
+          : ex,
+      ),
+    );
+    setSubstituteTarget(null);
+  }
+
   // ── Build log entries ───────────────────────────────────────────────────────
 
   const buildEntries = useCallback((): WorkoutLogEntry[] => {
@@ -256,7 +270,7 @@ export default function GuidedWorkoutPage() {
       if (blockSets.some((s) => s.completed)) {
         entries.push({
           blockId: ex.blockId,
-          exerciseId: ex.exerciseId,
+          exerciseId: ex.exerciseId ?? ex.blockId,
           exerciseName: ex.exerciseName,
           muscleGroup: ex.muscleGroup,
           sets: blockSets
@@ -423,8 +437,19 @@ export default function GuidedWorkoutPage() {
 
         {/* Exercise name */}
         <div className={`rounded-2xl border p-5 mb-4 ${allDone ? 'border-[#84d4d3]/30 bg-[#005050]/10' : 'border-zinc-800/60 bg-zinc-900'}`}>
-          <div className={`font-[Manrope] font-black text-2xl mb-1 ${allDone ? 'text-[#84d4d3]' : 'text-white'}`}>
-            {current.exerciseName}
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <div className={`font-[Manrope] font-black text-2xl leading-tight ${allDone ? 'text-[#84d4d3]' : 'text-white'}`}>
+              {current.exerciseName}
+            </div>
+            {current.exerciseId && !allDone && (
+              <button
+                onClick={() => setSubstituteTarget({ exIdx: currentIdx, exerciseId: current.exerciseId!, exerciseName: current.exerciseName })}
+                className="flex-shrink-0 w-9 h-9 rounded-xl bg-zinc-800 border border-zinc-700/60 flex items-center justify-center active:scale-90 transition-all"
+                title="Substituir exercício"
+              >
+                <span className="material-symbols-outlined text-sm text-zinc-400">swap_horiz</span>
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-wrap mb-3">
             <span className="text-[11px] font-bold uppercase text-zinc-300 bg-zinc-800 px-2 py-1 rounded-lg">
@@ -490,7 +515,7 @@ export default function GuidedWorkoutPage() {
 
                 <input type="number" value={set.reps}
                   onChange={(e) => updateSet(key, sIdx, 'reps', e.target.value)}
-                  className={darkInput} placeholder="—" min={0} />
+                  className={darkInput} placeholder={current.reps || '—'} min={0} />
 
                 <input type="number" value={set.load}
                   onChange={(e) => updateSet(key, sIdx, 'load', e.target.value)}
@@ -534,7 +559,7 @@ export default function GuidedWorkoutPage() {
             </div>
             <div style={{
               fontSize: '7rem', fontWeight: 900, color: restTimer <= 3 ? '#c8f542' : 'white',
-              fontFamily: 'Manrope, sans-serif', lineHeight: 1, tabularNums: true,
+              fontFamily: 'Manrope, sans-serif', lineHeight: 1, fontVariantNumeric: 'tabular-nums',
               transition: 'color 0.3s',
             }}>
               {restTimer}
@@ -597,6 +622,16 @@ export default function GuidedWorkoutPage() {
           </button>
         )}
       </div>
+
+      {/* ── Quick substitute modal ───────────────────────────────────────────── */}
+      {substituteTarget && (
+        <QuickSubstituteModal
+          exerciseId={substituteTarget.exerciseId}
+          exerciseName={substituteTarget.exerciseName}
+          onSelect={handleSubstituteGuided}
+          onClose={() => setSubstituteTarget(null)}
+        />
+      )}
     </div>
   );
 }
