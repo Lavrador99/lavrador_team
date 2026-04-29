@@ -13,26 +13,28 @@ import { AchievementsService } from '../../achievements/achievements.service';
 
 // Zod schemas validate blocks/entries — use minimal valid payloads in tests.
 const validBlock = {
+  id: 'block-1',
   type: 'SEQUENTIAL',
+  order: 0,
   restBetweenSets: 60,
   restAfterBlock: 120,
   exercises: [
     {
+      id: 'be-1',
       exerciseId: 'ex-1',
       exerciseName: 'Squat',
       sets: 3,
-      reps: 10,
+      reps: '10',
       load: 80,
-      tempo: '2010',
-      restBetweenSets: 60,
     },
   ],
 };
 
 const validLogEntry = {
+  blockId: 'block-1',
   exerciseId: 'ex-1',
   exerciseName: 'Squat',
-  sets: [{ reps: 10, load: 80, completed: true }],
+  sets: [{ setNumber: 1, reps: 10, load: 80, completed: true }],
 };
 
 describe('WorkoutsService', () => {
