@@ -19,14 +19,17 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 nestjs
+  && adduser --system --uid 1001 nestjs \
+  && apk add --no-cache openssl
 
-COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/dist/apps/api ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/prisma ./prisma
+
+RUN mkdir -p /app/uploads && chown nestjs:nodejs /app/uploads
 
 USER nestjs
 
 EXPOSE 3333
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main.js"]
