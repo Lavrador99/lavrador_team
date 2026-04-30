@@ -25,6 +25,12 @@ export class BodyMeasurementsController {
     return this.svc.findByClient(clientId);
   }
 
+  @Post('my')
+  @HttpCode(HttpStatus.CREATED)
+  createMy(@CurrentUser('sub') userId: string, @Body() dto: Omit<CreateBodyMeasurementDto, 'clientId'>) {
+    return this.svc.createForUser(userId, dto);
+  }
+
   @Get('my')
   findMy(@CurrentUser('sub') userId: string) {
     return this.svc.findByUser(userId);

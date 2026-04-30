@@ -28,12 +28,19 @@ export class UsersService {
     const user = await this.usersRepository.findById(userId);
     if (!user) throw new NotFoundException("Utilizador não encontrado");
 
-    return this.usersRepository.updateClient(userId, {
-      name: dto.name,
-      birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-      phone: dto.phone,
-      notes: dto.notes,
-    });
+    const updates: Promise<unknown>[] = [
+      this.usersRepository.updateClient(userId, {
+        name: dto.name,
+        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+        phone: dto.phone,
+        notes: dto.notes,
+      }),
+    ];
+    if (dto.email) {
+      updates.push(this.usersRepository.updateEmail(userId, dto.email));
+    }
+    const [client] = await Promise.all(updates);
+    return client;
   }
 
   async getClientDetail(clientId: string) {
@@ -114,6 +121,12 @@ export class UsersService {
     return events
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, limit);
+  }
+
+  async updateClientEmail(clientId: string, email: string) {
+    const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: { userId: true } });
+    if (!client) throw new NotFoundException('Cliente não encontrado');
+    return this.usersRepository.updateEmail(client.userId, email);
   }
 
   async getClientClinicalSummary(clientId: string) {

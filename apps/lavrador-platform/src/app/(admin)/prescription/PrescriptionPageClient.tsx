@@ -841,11 +841,11 @@ function Step6() {
       ))}
 
       <div className="flex gap-3 mt-4">
-        <a href={`/api/programs/${program.id}/export`} download
+        <button onClick={() => programsApi.exportJson(program.id)}
           className="kinetic-gradient text-on-primary font-headline font-bold text-sm px-5 py-2.5 rounded-lg hover:opacity-90 flex items-center gap-1">
           <span className="material-symbols-outlined text-sm">download</span>
           Exportar JSON
-        </a>
+        </button>
         <button onClick={reset} className="font-label font-bold text-xs text-secondary bg-surface-container-high px-4 py-2.5 rounded-lg hover:text-on-surface transition-colors flex items-center gap-1">
           <span className="material-symbols-outlined text-sm">refresh</span>
           Nova Prescrição

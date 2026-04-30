@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MessagesService } from '../messages/messages.service';
 
 export interface CreateFormCheckDto {
   exerciseName: string;
@@ -17,6 +18,7 @@ export class FormChecksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly messages: MessagesService,
   ) {}
 
   private async resolveClientId(userId: string): Promise<string> {
@@ -33,14 +35,25 @@ export class FormChecksService {
       include: { client: true },
     });
 
-    // Notify PT
+    // Notify PT via push notification and direct message
     const ptUser = await this.prisma.user.findFirst({ where: { role: 'ADMIN' } });
     if (ptUser) {
+      const clientUser = await this.prisma.user.findUnique({ where: { id: check.client.userId } });
+
       await this.notifications.sendToUser(ptUser.id, {
         title: '🎥 Pedido de análise de forma',
         body: `${check.client.name}: ${dto.exerciseName}`,
         url: `/clients/${clientId}`,
       }).catch(() => {});
+
+      if (clientUser) {
+        const notesPart = dto.notes ? ` — "${dto.notes}"` : '';
+        await this.messages.send(
+          clientUser.id,
+          ptUser.id,
+          `🎥 Pedido de análise de forma: ${dto.exerciseName}${notesPart}\nVídeo: ${dto.videoUrl}`,
+        ).catch(() => {});
+      }
     }
 
     return check;

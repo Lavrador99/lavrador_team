@@ -26,6 +26,11 @@ export const bodyMeasurementsApi = {
     return data;
   },
 
+  createMy: async (dto: Omit<CreateBodyMeasurementRequest, 'clientId'>): Promise<BodyMeasurementDto> => {
+    const { data } = await api.post('/body-measurements/my', dto);
+    return data;
+  },
+
   getByClient: async (clientId: string): Promise<BodyMeasurementDto[]> => {
     const { data } = await api.get(`/body-measurements/client/${clientId}`);
     return data;

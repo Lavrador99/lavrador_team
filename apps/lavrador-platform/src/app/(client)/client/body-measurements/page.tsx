@@ -54,8 +54,7 @@ export default function BodyMeasurementsPage() {
   async function handleSave() {
     setSaving(true);
     try {
-      await bodyMeasurementsApi.create({
-        clientId: '',
+      await bodyMeasurementsApi.createMy({
         recordedAt: form.recordedAt,
         peso:       form.peso ? parseFloat(form.peso) : undefined,
         pctGordura: form.pctGordura ? parseFloat(form.pctGordura) : undefined,

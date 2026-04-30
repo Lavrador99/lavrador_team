@@ -31,7 +31,10 @@ export default function MessagesPage() {
     try {
       const res = await fetch(`${API}/api/messages/broadcast`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         credentials: 'include',
         body: JSON.stringify({ content: broadcastContent }),
       });

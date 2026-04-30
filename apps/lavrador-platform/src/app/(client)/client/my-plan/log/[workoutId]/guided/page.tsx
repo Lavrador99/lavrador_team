@@ -53,21 +53,42 @@ function formatTime(s: number) {
 function flattenExercises(workout: WorkoutDto): FlatExercise[] {
   const flat: FlatExercise[] = [];
   for (const block of workout.blocks) {
-    for (let i = 0; i < block.exercises.length; i++) {
-      const ex = block.exercises[i];
+    if (block.exercises.length > 0) {
+      for (let i = 0; i < block.exercises.length; i++) {
+        const ex = block.exercises[i];
+        flat.push({
+          blockId: block.id,
+          blockType: block.type,
+          blockLabel: block.label ?? block.type,
+          exIdx: i,
+          exerciseId: ex.exerciseId ?? ex.id,
+          exerciseName: ex.exerciseName,
+          muscleGroup: ex.muscleGroup,
+          sets: ex.sets,
+          reps: ex.reps,
+          load: ex.load,
+          notes: ex.notes,
+          restAfterSet: ex.restAfterSet ?? block.restBetweenSets ?? 60,
+          restAfterBlock: block.restAfterBlock ?? 0,
+        });
+      }
+    } else if (['CARDIO', 'WARMUP', 'FLEXIBILITY'].includes(block.type)) {
+      // Blocks without exercises get a single synthetic entry so guided mode can display them
+      const durationMin = (block as any).cardioDurationMin ?? 10;
+      const method = (block as any).cardioMethod ?? (block as any).stretchMethod ?? '';
       flat.push({
         blockId: block.id,
         blockType: block.type,
         blockLabel: block.label ?? block.type,
-        exIdx: i,
-        exerciseId: ex.exerciseId ?? ex.id,
-        exerciseName: ex.exerciseName,
-        muscleGroup: ex.muscleGroup,
-        sets: ex.sets,
-        reps: ex.reps,
-        load: ex.load,
-        notes: ex.notes,
-        restAfterSet: ex.restAfterSet ?? block.restBetweenSets ?? 60,
+        exIdx: 0,
+        exerciseId: undefined,
+        exerciseName: method ? `${block.label ?? block.type} — ${method}` : (block.label ?? block.type),
+        muscleGroup: undefined,
+        sets: 1,
+        reps: `${durationMin} min`,
+        load: undefined,
+        notes: (block as any).cardioNotes,
+        restAfterSet: 0,
         restAfterBlock: block.restAfterBlock ?? 0,
       });
     }
@@ -108,6 +129,7 @@ export default function GuidedWorkoutPage() {
 
   const restRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const setsInitialized = useRef(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const wakeLockRef = useRef<any>(null);
   const restSoundCtxRef = useRef<AudioContext | null>(null);
@@ -133,33 +155,56 @@ export default function GuidedWorkoutPage() {
 
   // ── Flatten exercises and init sets ────────────────────────────────────────
 
+  // Initialize sets once when workout first loads
   useEffect(() => {
-    if (!workout) return;
+    if (!workout || setsInitialized.current) return;
     const exercises = flattenExercises(workout);
     setFlat(exercises);
 
     const init: BlockSets = {};
     for (const ex of exercises) {
       const key = makeKey(ex.blockId, ex.exIdx);
-      // Try to pre-fill from last session's actual values
-      const prevData = lastLog?.entries.find(
-        (e) => (ex.exerciseId && e.exerciseId === ex.exerciseId) || e.exerciseName === ex.exerciseName,
-      );
-      const prevSetsData = prevData?.sets ?? [];
-
-      init[key] = Array.from({ length: ex.sets }, (_, i) => {
-        const prev = prevSetsData[i];
-        return {
-          reps: prev?.reps ? String(prev.reps) : (ex.reps?.match(/\d+/)?.[0] || ''),
-          load: prev?.load ? String(prev.load) : (ex.load ? String(ex.load) : ''),
-          rpe: '',
-          completed: false,
-          setType: 'NORMAL' as SetType,
-        };
-      });
+      init[key] = Array.from({ length: ex.sets }, () => ({
+        reps: ex.reps?.match(/\d+/)?.[0] || '',
+        load: ex.load ? String(ex.load) : '',
+        rpe: '',
+        completed: false,
+        setType: 'NORMAL' as SetType,
+      }));
     }
     setSets(init);
-  }, [workout, lastLog]);
+    setsInitialized.current = true;
+  }, [workout]);
+
+  // Prefill from lastLog without overwriting already-started sets
+  useEffect(() => {
+    if (!lastLog || !setsInitialized.current || flat.length === 0) return;
+    setSets((prev) => {
+      const next = { ...prev };
+      for (const ex of flat) {
+        const key = makeKey(ex.blockId, ex.exIdx);
+        const arr = next[key];
+        if (!arr) continue;
+        if (arr.some((s) => s.completed)) continue; // already started
+
+        const prevEntry = lastLog.entries.find(
+          (e) => (ex.exerciseId && e.exerciseId === ex.exerciseId) || e.exerciseName === ex.exerciseName,
+        );
+        if (!prevEntry) continue;
+
+        next[key] = arr.map((s, i) => {
+          const prev = prevEntry.sets?.[i];
+          if (!prev) return s;
+          return {
+            ...s,
+            reps: prev.reps ? String(prev.reps) : s.reps,
+            load: prev.load ? String(prev.load) : s.load,
+          };
+        });
+      }
+      return next;
+    });
+  }, [lastLog, flat]);
 
   // ── Timer ───────────────────────────────────────────────────────────────────
 

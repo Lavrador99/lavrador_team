@@ -49,7 +49,15 @@ export const programsApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/programs/${id}`);
   },
-  exportJson: (id: string): string => `/api/programs/${id}/export`,
+  exportJson: async (id: string): Promise<void> => {
+    const { data } = await api.get(`/programs/${id}/export`, { responseType: 'blob' });
+    const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `program-${id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
   clone: async (id: string, clientId: string, name?: string): Promise<ProgramDto> => {
     const { data } = await api.post(`/programs/${id}/clone`, { clientId, name });
     return data;

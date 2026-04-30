@@ -22,7 +22,7 @@ export function makeDefaultBlock(type: BlockType): WorkoutBlock {
     id: genId(), type, order: 0,
     restBetweenSets: rests.sets, restAfterBlock: rests.block, exercises: [],
   };
-  if (type === 'TABATA') { base.tabata = { workSeconds: 20, restSeconds: 10, rounds: 8, totalSeconds: 240 }; base.label = 'Tabata (20s / 10s × 8)'; }
+  if (type === 'TABATA') { base.tabata = { workSeconds: 20, restBetweenExercises: 10, restBetweenCircuits: 60, rounds: 8, totalSeconds: 320 }; base.label = 'Tabata'; }
   if (type === 'CARDIO') { base.cardioMethod = 'CONTINUO_EXTENSIVO'; base.cardioDurationMin = 20; base.label = 'Cardio'; }
   if (type === 'FLEXIBILITY') { base.stretchMethod = 'ESTATICO'; base.holdSeconds = 20; base.label = 'Alongamentos'; }
   if (type === 'WARMUP') { base.label = 'Aquecimento'; }
@@ -64,6 +64,7 @@ interface EditorState {
   setSaving: (v: boolean) => void;
   setError: (e: string | null) => void;
   setWorkout: (w: WorkoutDto) => void;
+  setBlocks: (blocks: WorkoutBlock[]) => void;
   markClean: () => void;
 
   // ── Bulk actions ────────────────────────────────────────────────────────
@@ -140,6 +141,7 @@ export const useWorkoutEditorStore = create<EditorState>((set, get) => ({
   setSaving: (v) => set({ saving: v }),
   setError: (e) => set({ error: e }),
   setWorkout: (w) => set({ workout: w }),
+  setBlocks: (blocks) => set({ blocks: blocks.map((b, i) => ({ ...b, order: i })), isDirty: true }),
   markClean: () => set({ isDirty: false }),
 
   toggleBulkSelection: () =>

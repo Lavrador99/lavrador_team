@@ -56,6 +56,12 @@ export class BodyMeasurementsService {
     return this.findByClient(client.id);
   }
 
+  async createForUser(userId: string, dto: Omit<CreateBodyMeasurementDto, 'clientId'>) {
+    const client = await this.prisma.client.findUnique({ where: { userId }, select: { id: true } });
+    if (!client) throw new NotFoundException('Cliente não encontrado');
+    return this.create({ ...dto, clientId: client.id });
+  }
+
   async delete(id: string) {
     const m = await this.prisma.bodyMeasurement.findUnique({ where: { id } });
     if (!m) throw new NotFoundException('Medição não encontrada');
