@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   UseGuards,
+  BadRequestException,
 } from "@nestjs/common";
 import { CurrentUser } from "../../../common/decorators/current-user.decorator";
 import { Roles } from "../../../common/decorators/roles.decorator";
@@ -56,5 +57,15 @@ export class UsersController {
   @Roles("ADMIN")
   getClientClinicalSummary(@Param("clientId") clientId: string) {
     return this.usersService.getClientClinicalSummary(clientId);
+  }
+
+  @Patch("clients/:clientId/email")
+  @Roles("ADMIN")
+  async updateClientEmail(
+    @Param("clientId") clientId: string,
+    @Body("email") email: string,
+  ) {
+    if (!email?.trim()) throw new BadRequestException("Email inválido");
+    return this.usersService.updateClientEmail(clientId, email.trim());
   }
 }

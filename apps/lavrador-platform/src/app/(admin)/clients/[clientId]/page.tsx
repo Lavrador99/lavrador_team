@@ -14,6 +14,7 @@ import { statsApi } from '../../../../lib/api/stats.api';
 import { bodyMeasurementsApi } from '../../../../lib/api/body-measurements.api';
 import { EmptyState } from '../../../../components/ui';
 import { ClientTimeline } from '../../../../components/clients/ClientTimeline';
+import { useAuthStore } from '../../../../lib/stores/authStore';
 import {
   INVOICE_STATUS_STYLE, INVOICE_STATUS_LABEL,
   SESSION_STATUS_LABEL, SESSION_STATUS_STYLE, SESSION_TYPE_LABEL,
@@ -131,6 +132,9 @@ export default function ClientDetailPage() {
   const [savingHabit, setSavingHabit] = useState(false);
   const [cloningId, setCloningId] = useState<string | null>(null);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailDraft, setEmailDraft] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
 
   const { data: client } = useSWR(clientId ? `client-${clientId}` : null, () => clientsApi.getDetail(clientId!));
   const { data: stats } = useSWR(clientId ? `stats-${clientId}` : null, () => statsApi.getClient(clientId!));
@@ -140,32 +144,39 @@ export default function ClientDetailPage() {
   const { data: habits = [], mutate: mutateHabits } = useSWR(tab === 'habitos' && clientId ? `habits-${clientId}` : null, () => habitsApi.getByClient(clientId!));
   const { data: photos = [], mutate: mutatePhotos } = useSWR(tab === 'fotos' && clientId ? `photos-${clientId}` : null, () => progressPhotosApi.getByClient(clientId!));
   const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const authHeaders = (extra: Record<string, string> = {}) => ({
+    'Content-Type': 'application/json',
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    ...extra,
+  });
+
   const { data: recentReadiness = [] } = useSWR(
     tab === 'overview' && clientId ? `readiness-${clientId}` : null,
-    () => fetch(`${API_BASE}/api/readiness/client/${clientId}?limit=3`, { credentials: 'include' }).then((r) => r.json()),
+    () => fetch(`${API_BASE}/api/readiness/client/${clientId}?limit=3`, { credentials: 'include', headers: authHeaders({}) }).then((r) => r.json()),
   );
   const { data: achievements = [] } = useSWR(
     tab === 'overview' && clientId ? `achievements-${clientId}` : null,
-    () => fetch(`${API_BASE}/api/achievements/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+    () => fetch(`${API_BASE}/api/achievements/client/${clientId}`, { credentials: 'include', headers: authHeaders({}) }).then((r) => r.json()),
   );
   const { data: painReports = [], mutate: mutatePain } = useSWR(
     tab === 'dor' && clientId ? `pain-${clientId}` : null,
-    () => fetch(`${API_BASE}/api/pain-reports/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+    () => fetch(`${API_BASE}/api/pain-reports/client/${clientId}`, { credentials: 'include', headers: authHeaders({}) }).then((r) => r.json()),
   );
   const { data: formChecks = [], mutate: mutateFormChecks } = useSWR(
     tab === 'forma' && clientId ? `form-checks-${clientId}` : null,
-    () => fetch(`${API_BASE}/api/form-checks/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+    () => fetch(`${API_BASE}/api/form-checks/client/${clientId}`, { credentials: 'include', headers: authHeaders({}) }).then((r) => r.json()),
   );
   const [feedbackInputs, setFeedbackInputs] = useState<Record<string, string>>({});
   const [reviewingId, setReviewingId] = useState<string | null>(null);
 
   const { data: sessionPackages = [], mutate: mutatePackages } = useSWR(
     tab === 'pacotes' && clientId ? `packages-${clientId}` : null,
-    () => fetch(`${API_BASE}/api/session-packages/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+    () => fetch(`${API_BASE}/api/session-packages/client/${clientId}`, { credentials: 'include', headers: authHeaders({}) }).then((r) => r.json()),
   );
   const { data: contracts = [], mutate: mutateContracts } = useSWR(
     tab === 'contratos' && clientId ? `contracts-${clientId}` : null,
-    () => fetch(`${API_BASE}/api/contracts/client/${clientId}`, { credentials: 'include' }).then((r) => r.json()),
+    () => fetch(`${API_BASE}/api/contracts/client/${clientId}`, { credentials: 'include', headers: authHeaders({}) }).then((r) => r.json()),
   );
   const [newPkg, setNewPkg] = useState({ name: '', totalSessions: 10, priceEur: 100 });
   const [savingPkg, setSavingPkg] = useState(false);
@@ -177,7 +188,7 @@ export default function ClientDetailPage() {
     setSavingPkg(true);
     try {
       await fetch(`${API_BASE}/api/session-packages`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        method: 'POST', headers: authHeaders(), credentials: 'include',
         body: JSON.stringify({ ...newPkg, clientId }),
       });
       mutatePackages();
@@ -186,7 +197,7 @@ export default function ClientDetailPage() {
   }
 
   async function usePackageSession(pkgId: string) {
-    await fetch(`${API_BASE}/api/session-packages/${pkgId}/use`, { method: 'PATCH', credentials: 'include' });
+    await fetch(`${API_BASE}/api/session-packages/${pkgId}/use`, { method: 'PATCH', credentials: 'include', headers: authHeaders({}) });
     mutatePackages();
   }
 
@@ -195,7 +206,7 @@ export default function ClientDetailPage() {
     setSavingContract(true);
     try {
       const res = await fetch(`${API_BASE}/api/contracts`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        method: 'POST', headers: authHeaders(), credentials: 'include',
         body: JSON.stringify({ ...newContract, clientId }),
       });
       if (!res.ok) throw new Error('Erro ao criar contrato');
@@ -206,8 +217,21 @@ export default function ClientDetailPage() {
     } finally { setSavingContract(false); }
   }
 
+  async function saveEmail() {
+    if (!clientId || !emailDraft.trim()) return;
+    setSavingEmail(true);
+    try {
+      await fetch(`${API_BASE}/api/users/clients/${clientId}/email`, {
+        method: 'PATCH', headers: authHeaders(), credentials: 'include',
+        body: JSON.stringify({ email: emailDraft.trim() }),
+      });
+      setEditingEmail(false);
+    } catch { alert('Erro ao actualizar email'); }
+    finally { setSavingEmail(false); }
+  }
+
   async function resolvePain(id: string) {
-    await fetch(`${API_BASE}/api/pain-reports/${id}/resolve`, { method: 'PATCH', credentials: 'include' });
+    await fetch(`${API_BASE}/api/pain-reports/${id}/resolve`, { method: 'PATCH', credentials: 'include', headers: authHeaders({}) });
     mutatePain();
   }
 
@@ -218,7 +242,7 @@ export default function ClientDetailPage() {
     try {
       await fetch(`${API_BASE}/api/form-checks/${id}/review`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         credentials: 'include',
         body: JSON.stringify({ ptFeedback: feedback }),
       });
@@ -321,7 +345,30 @@ export default function ClientDetailPage() {
           {/* Info */}
           <div className="flex-1 min-w-0">
             <h1 className="font-headline font-extrabold text-2xl text-on-surface tracking-tight">{name}</h1>
-            <p className="font-label text-sm text-secondary mt-0.5">{user.email}</p>
+            {editingEmail ? (
+              <div className="flex items-center gap-2 mt-0.5">
+                <input
+                  type="email"
+                  value={emailDraft}
+                  onChange={(e) => setEmailDraft(e.target.value)}
+                  className="text-sm border border-outline-variant rounded-lg px-2 py-1 outline-none focus:border-primary bg-white text-on-surface"
+                  autoFocus
+                />
+                <button onClick={saveEmail} disabled={savingEmail}
+                  className="text-xs font-bold text-primary hover:underline disabled:opacity-50">
+                  {savingEmail ? '...' : 'Guardar'}
+                </button>
+                <button onClick={() => setEditingEmail(false)} className="text-xs text-secondary hover:underline">Cancelar</button>
+              </div>
+            ) : (
+              <p className="font-label text-sm text-secondary mt-0.5 flex items-center gap-1">
+                {user.email}
+                <button onClick={() => { setEmailDraft(user.email); setEditingEmail(true); }}
+                  className="text-outline hover:text-primary transition-colors ml-1">
+                  <span className="material-symbols-outlined text-sm">edit</span>
+                </button>
+              </p>
+            )}
             {user.client?.phone && <p className="font-label text-xs text-secondary">{user.client.phone}</p>}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {stats?.attendanceRate != null && (

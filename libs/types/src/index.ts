@@ -368,17 +368,26 @@ export type CardioMethod =
   | "CONTINUO_VARIAVEL"
   | "INTERVALADO"
   | "HIIT"
-  | "FARTLEK";
+  | "FARTLEK"
+  | "CORRIDA_LEVE"
+  | "CORRIDA_PROGRESSIVA"
+  | "CORRIDA_RITMO"
+  | "CORRIDA_LONGA"
+  | "TREINO_PROVA"
+  | "POLIMENTO";
 
 export type StretchMethod = "ESTATICO" | "BALISTICO" | "PNF";
 
 export type WorkoutStatus = "DRAFT" | "ACTIVE" | "ARCHIVED";
 
 export interface TabataConfig {
-  workSeconds: number; // ex: 20
-  restSeconds: number; // ex: 10
-  rounds: number; // ex: 8
-  totalSeconds: number; // calculado: rounds × (work + rest)
+  workSeconds: number;           // tempo de execução por exercício (ex: 20s)
+  restBetweenExercises: number;  // descanso entre exercícios dentro de um circuito (ex: 10s)
+  restBetweenCircuits: number;   // descanso entre circuitos completos (ex: 60s)
+  rounds: number;                // número de circuitos (ex: 8)
+  totalSeconds: number;          // calculado
+  /** @deprecated use restBetweenExercises */
+  restSeconds?: number;
 }
 
 export interface BlockExercise {

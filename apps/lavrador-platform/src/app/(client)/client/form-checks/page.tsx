@@ -112,6 +112,32 @@ export default function FormChecksPage() {
         </div>
       )}
 
+      {/* Pending section */}
+      {Array.isArray(checks) && checks.filter((c: any) => c.status !== 'REVIEWED').length > 0 && (
+        <div className="mb-5">
+          <h2 className="font-headline font-bold text-sm text-white mb-3 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+            Análises Pendentes
+          </h2>
+          <div className="space-y-2">
+            {(checks as any[]).filter((c: any) => c.status !== 'REVIEWED').map((c: any) => (
+              <div key={c.id} className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="font-headline font-bold text-sm text-white">{c.exerciseName}</div>
+                  <span className="font-label text-xs font-bold px-2 py-1 rounded-full bg-amber-500/20 text-amber-300">⏳ Pendente</span>
+                </div>
+                <div className="font-label text-xs text-zinc-400">{new Date(c.createdAt).toLocaleDateString('pt-PT')}</div>
+                {c.notes && <p className="font-label text-xs text-zinc-400 mt-1">{c.notes}</p>}
+                <a href={c.videoUrl} target="_blank" rel="noopener noreferrer"
+                  className="mt-2 flex items-center gap-1.5 font-label text-xs text-[#84d4d3] hover:underline">
+                  <span className="material-symbols-outlined text-sm">play_circle</span>Ver vídeo
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {Array.isArray(checks) && checks.length === 0 ? (
         <div className="text-center py-16 text-zinc-400">
           <span className="material-symbols-outlined text-4xl text-zinc-500 mb-3 block">
@@ -126,7 +152,10 @@ export default function FormChecksPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {(checks as any[]).map((c) => (
+          {(checks as any[]).filter((c: any) => c.status === 'REVIEWED').length > 0 && (
+            <h2 className="font-headline font-bold text-sm text-white mb-2">Analisadas</h2>
+          )}
+          {(checks as any[]).filter((c: any) => c.status === 'REVIEWED').map((c: any) => (
             <div key={c.id} className="bg-zinc-900 rounded-xl p-4">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div>

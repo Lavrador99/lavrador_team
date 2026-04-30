@@ -16,12 +16,18 @@ const BLOCK_META: Record<BlockType, { color: string; bg: string; label: string; 
 };
 
 const CARDIO_METHODS = [
-  { value: 'CONTINUO_EXTENSIVO', label: 'Contínuo Extensivo' },
-  { value: 'CONTINUO_INTENSIVO', label: 'Contínuo Intensivo' },
-  { value: 'CONTINUO_VARIAVEL',  label: 'Contínuo Variável (Fartlek)' },
-  { value: 'INTERVALADO',        label: 'Intervalado' },
-  { value: 'HIIT',               label: 'HIIT' },
-  { value: 'FARTLEK',            label: 'Fartlek' },
+  { value: 'CONTINUO_EXTENSIVO',  label: 'Contínuo Extensivo' },
+  { value: 'CONTINUO_INTENSIVO',  label: 'Contínuo Intensivo' },
+  { value: 'CONTINUO_VARIAVEL',   label: 'Contínuo Variável' },
+  { value: 'INTERVALADO',         label: 'Intervalado' },
+  { value: 'HIIT',                label: 'HIIT' },
+  { value: 'FARTLEK',             label: 'Fartlek' },
+  { value: 'CORRIDA_LEVE',        label: 'Corrida Leve (Z2 — conversa)' },
+  { value: 'CORRIDA_PROGRESSIVA', label: 'Corrida Progressiva' },
+  { value: 'CORRIDA_RITMO',       label: 'Corrida de Ritmo (Tempo Run)' },
+  { value: 'CORRIDA_LONGA',       label: 'Corrida Longa' },
+  { value: 'TREINO_PROVA',        label: 'Simulação de Prova / Contrarrelógio' },
+  { value: 'POLIMENTO',           label: 'Polimento (Tapering)' },
 ];
 
 // Superset/Circuit use A1,A2... ; others use 1,2,3
@@ -61,12 +67,18 @@ export function BlockCard({ block, index, isDragging, onDragStart, onDragOver, o
   const isSuperset = ['SUPERSET', 'CIRCUIT'].includes(block.type);
 
   const tabataTotal = block.tabata
-    ? block.tabata.rounds * (block.tabata.workSeconds + block.tabata.restSeconds)
+    ? block.tabata.rounds * (
+        block.exercises.length * (block.tabata.workSeconds + (block.tabata.restBetweenExercises ?? block.tabata.restSeconds ?? 10))
+        + (block.tabata.restBetweenCircuits ?? 60)
+      )
     : 0;
 
   const updateTabata = (changes: object) => {
     const t = { ...block.tabata!, ...changes };
-    t.totalSeconds = t.rounds * (t.workSeconds + t.restSeconds);
+    t.totalSeconds = t.rounds * (
+      block.exercises.length * (t.workSeconds + (t.restBetweenExercises ?? t.restSeconds ?? 10))
+      + (t.restBetweenCircuits ?? 60)
+    );
     updateBlock(block.id, { tabata: t });
   };
 
@@ -139,23 +151,38 @@ export function BlockCard({ block, index, isDragging, onDragStart, onDragOver, o
 
           {/* ── TABATA config ─────────────────────────────────────────────── */}
           {block.type === 'TABATA' && block.tabata && (
-            <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-4 flex flex-wrap items-end gap-4">
-              {[
-                { label: 'Trabalho (s)', val: block.tabata.workSeconds, key: 'workSeconds' },
-                { label: 'Repouso (s)', val: block.tabata.restSeconds, key: 'restSeconds' },
-                { label: 'Rounds',      val: block.tabata.rounds,      key: 'rounds' },
-              ].map(({ label, val, key }) => (
-                <div key={key}>
-                  <label className={labelCls}>{label}</label>
-                  <input type="number" value={val} min={1}
-                    onChange={(e) => updateTabata({ [key]: parseInt(e.target.value) || 1 })}
+            <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-4">
+              <div className="text-[9px] font-black uppercase tracking-[0.15em] text-red-700 mb-3">Configuração do circuito (aplicada a todos os exercícios)</div>
+              <div className="flex flex-wrap items-end gap-4">
+                <div>
+                  <label className={labelCls}>Execução (s)</label>
+                  <input type="number" value={block.tabata.workSeconds} min={1}
+                    onChange={(e) => updateTabata({ workSeconds: parseInt(e.target.value) || 1 })}
                     className={cellInp('w-20')} />
                 </div>
-              ))}
-              <div className="ml-auto self-end">
-                <span className="font-headline font-black text-base text-red-600">
-                  ⏱ {Math.floor(tabataTotal / 60)}:{String(tabataTotal % 60).padStart(2, '0')} min
-                </span>
+                <div>
+                  <label className={labelCls}>Descanso entre exercícios (s)</label>
+                  <input type="number" value={block.tabata.restBetweenExercises ?? block.tabata.restSeconds ?? 10} min={0}
+                    onChange={(e) => updateTabata({ restBetweenExercises: parseInt(e.target.value) || 0 })}
+                    className={cellInp('w-20')} />
+                </div>
+                <div>
+                  <label className={labelCls}>Descanso entre circuitos (s)</label>
+                  <input type="number" value={block.tabata.restBetweenCircuits ?? 60} min={0}
+                    onChange={(e) => updateTabata({ restBetweenCircuits: parseInt(e.target.value) || 0 })}
+                    className={cellInp('w-20')} />
+                </div>
+                <div>
+                  <label className={labelCls}>Nº de circuitos</label>
+                  <input type="number" value={block.tabata.rounds} min={1}
+                    onChange={(e) => updateTabata({ rounds: parseInt(e.target.value) || 1 })}
+                    className={cellInp('w-20')} />
+                </div>
+                <div className="ml-auto self-end">
+                  <span className="font-headline font-black text-base text-red-600">
+                    ⏱ {Math.floor(tabataTotal / 60)}:{String(tabataTotal % 60).padStart(2, '0')} min
+                  </span>
+                </div>
               </div>
             </div>
           )}

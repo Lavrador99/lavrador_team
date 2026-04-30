@@ -166,6 +166,26 @@ export function WorkoutEditorClient({ workoutId }: Props) {
 
   const frequentExercises = allExercises.slice(0, 5);
 
+  // Templates panel
+  const [templates, setTemplates] = useState<import('../../../../lib/api/workout-templates.api').WorkoutTemplateDto[]>([]);
+  const [tplLoading, setTplLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeNav !== 'templates') return;
+    setTplLoading(true);
+    workoutTemplatesApi.getAll().then(setTemplates).catch(() => {}).finally(() => setTplLoading(false));
+  }, [activeNav]);
+
+  // Calculators state
+  const [calcWeight, setCalcWeight] = useState('');
+  const [calcReps, setCalcReps] = useState('');
+  const orm = useMemo(() => {
+    const w = parseFloat(calcWeight);
+    const r = parseInt(calcReps);
+    if (!w || !r || r < 1) return null;
+    return Math.round(w * (1 + r / 30));
+  }, [calcWeight, calcReps]);
+
   const backPath = programId ? `/workouts?programId=${programId}&clientId=${clientId}` : undefined;
 
   return (
@@ -410,94 +430,187 @@ export function WorkoutEditorClient({ workoutId }: Props) {
           </div>
         </div>
 
-        {/* ── Right library panel ──────────────────────────────────────────── */}
+        {/* ── Right panel (dynamic by activeNav) ──────────────────────────── */}
         <div className="w-72 flex-shrink-0 bg-white border-l border-outline-variant flex flex-col overflow-hidden">
-          <div className="px-4 pt-4 pb-3 border-b border-outline-variant flex-shrink-0">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Biblioteca de exercícios</div>
-            <div className="flex items-center gap-2 bg-surface-container rounded-xl px-3 py-2">
-              <span className="material-symbols-outlined text-base text-outline">search</span>
-              <input
-                value={exSearch}
-                onChange={(e) => setExSearch(e.target.value)}
-                placeholder="Pesquisar exercícios..."
-                className="flex-1 bg-transparent text-sm text-on-surface placeholder-outline outline-none"
-              />
-              {exSearch && (
-                <button onClick={() => setExSearch('')}>
-                  <span className="material-symbols-outlined text-base text-outline hover:text-on-surface">cancel</span>
-                </button>
-              )}
-            </div>
-          </div>
 
-          {/* Exercise list */}
-          <div className="flex-1 overflow-y-auto">
-            {exLoading ? (
-              <div className="py-12 text-center text-sm text-on-surface-variant">A carregar...</div>
-            ) : exSearch.trim() ? (
-              /* Search results */
-              <div className="p-3 space-y-1">
-                {filteredExercises.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-on-surface-variant">Sem resultados</div>
-                ) : filteredExercises.map((ex) => (
-                  <ExerciseLibraryCard key={ex.id} ex={ex} blocks={blocks} onAdd={(blockId) => {
-                    const { addExercise } = useWorkoutEditorStore.getState();
-                    addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.primaryMuscles?.[0] });
-                  }} />
-                ))}
+          {/* ── LIBRARY ── */}
+          {activeNav === 'library' && (
+            <>
+              <div className="px-4 pt-4 pb-3 border-b border-outline-variant flex-shrink-0">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Biblioteca de exercícios</div>
+                <div className="flex items-center gap-2 bg-surface-container rounded-xl px-3 py-2">
+                  <span className="material-symbols-outlined text-base text-outline">search</span>
+                  <input
+                    value={exSearch}
+                    onChange={(e) => setExSearch(e.target.value)}
+                    placeholder="Pesquisar exercícios..."
+                    className="flex-1 bg-transparent text-sm text-on-surface placeholder-outline outline-none"
+                  />
+                  {exSearch && (
+                    <button onClick={() => setExSearch('')}>
+                      <span className="material-symbols-outlined text-base text-outline hover:text-on-surface">cancel</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            ) : (
-              /* Grouped view */
-              <>
-                {/* Frequently used */}
-                {frequentExercises.length > 0 && (
-                  <div className="px-4 pt-4 pb-2">
-                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-on-surface-variant mb-2">
-                      Frequentemente Usados
-                    </div>
-                    <div className="space-y-1">
-                      {frequentExercises.map((ex) => (
-                        <ExerciseLibraryCard key={ex.id} ex={ex} blocks={blocks} onAdd={(blockId) => {
-                          const { addExercise } = useWorkoutEditorStore.getState();
-                          addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.primaryMuscles?.[0] });
-                        }} />
-                      ))}
-                    </div>
+              <div className="flex-1 overflow-y-auto">
+                {exLoading ? (
+                  <div className="py-12 text-center text-sm text-on-surface-variant">A carregar...</div>
+                ) : exSearch.trim() ? (
+                  <div className="p-3 space-y-1">
+                    {filteredExercises.length === 0 ? (
+                      <div className="py-8 text-center text-sm text-on-surface-variant">Sem resultados</div>
+                    ) : filteredExercises.map((ex) => (
+                      <ExerciseLibraryCard key={ex.id} ex={ex} blocks={blocks} onAdd={(blockId) => {
+                        const { addExercise } = useWorkoutEditorStore.getState();
+                        addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.primaryMuscles?.[0] });
+                      }} />
+                    ))}
                   </div>
+                ) : (
+                  <>
+                    {frequentExercises.length > 0 && (
+                      <div className="px-4 pt-4 pb-2">
+                        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-on-surface-variant mb-2">Frequentemente Usados</div>
+                        <div className="space-y-1">
+                          {frequentExercises.map((ex) => (
+                            <ExerciseLibraryCard key={ex.id} ex={ex} blocks={blocks} onAdd={(blockId) => {
+                              const { addExercise } = useWorkoutEditorStore.getState();
+                              addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.primaryMuscles?.[0] });
+                            }} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {[...groupedExercises.entries()].map(([pattern, exs]) => (
+                      <div key={pattern} className="px-4 pt-3 pb-2">
+                        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-on-surface-variant mb-2">
+                          {PATTERN_LABEL[pattern] ?? pattern}
+                        </div>
+                        <div className="space-y-1">
+                          {exs.slice(0, 6).map((ex) => (
+                            <ExerciseLibraryCard key={ex.id} ex={ex} blocks={blocks} onAdd={(blockId) => {
+                              const { addExercise } = useWorkoutEditorStore.getState();
+                              addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.primaryMuscles?.[0] });
+                            }} />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </>
                 )}
+              </div>
+              <div className="px-4 py-3 border-t border-outline-variant flex-shrink-0">
+                <div className="bg-primary/6 rounded-xl p-3 flex gap-2.5">
+                  <span className="material-symbols-outlined text-primary text-lg flex-shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
+                  <div>
+                    <div className="text-[9px] font-black uppercase tracking-[0.15em] text-primary mb-1">Editor Tip</div>
+                    <p className="text-[11px] text-on-surface-variant leading-snug">Clica num exercício e escolhe o bloco onde o queres adicionar.</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
-                {/* By pattern */}
-                {[...groupedExercises.entries()].map(([pattern, exs]) => (
-                  <div key={pattern} className="px-4 pt-3 pb-2">
-                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-on-surface-variant mb-2">
-                      {PATTERN_LABEL[pattern] ?? pattern}
-                    </div>
-                    <div className="space-y-1">
-                      {exs.slice(0, 6).map((ex) => (
-                        <ExerciseLibraryCard key={ex.id} ex={ex} blocks={blocks} onAdd={(blockId) => {
-                          const { addExercise } = useWorkoutEditorStore.getState();
-                          addExercise(blockId, { exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.primaryMuscles?.[0] });
-                        }} />
-                      ))}
-                    </div>
+          {/* ── TEMPLATES ── */}
+          {activeNav === 'templates' && (
+            <>
+              <div className="px-4 pt-4 pb-3 border-b border-outline-variant flex-shrink-0">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Templates guardados</div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {tplLoading ? (
+                  <div className="py-12 text-center text-sm text-on-surface-variant">A carregar...</div>
+                ) : templates.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-on-surface-variant">Sem templates guardados.</div>
+                ) : templates.map((tpl) => (
+                  <div key={tpl.id} className="bg-surface-container-low rounded-xl p-3 border border-outline-variant">
+                    <div className="font-headline font-bold text-sm text-on-surface mb-1">{tpl.name}</div>
+                    <div className="text-[10px] text-on-surface-variant mb-2">{tpl.blocks.length} bloco{tpl.blocks.length !== 1 ? 's' : ''}</div>
+                    <button
+                      onClick={() => {
+                        const state = useWorkoutEditorStore.getState();
+                        state.setBlocks(tpl.blocks);
+                        if (!state.name || state.name === 'Novo Treino') state.setName(tpl.name);
+                      }}
+                      className="w-full text-xs font-semibold text-primary bg-primary/8 rounded-lg px-3 py-1.5 hover:bg-primary/12 transition-colors"
+                    >
+                      Aplicar ao treino
+                    </button>
                   </div>
                 ))}
-              </>
-            )}
-          </div>
-
-          {/* Editor tip */}
-          <div className="px-4 py-3 border-t border-outline-variant flex-shrink-0">
-            <div className="bg-primary/6 rounded-xl p-3 flex gap-2.5">
-              <span className="material-symbols-outlined text-primary text-lg flex-shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
-              <div>
-                <div className="text-[9px] font-black uppercase tracking-[0.15em] text-primary mb-1">Editor Tip</div>
-                <p className="text-[11px] text-on-surface-variant leading-snug">
-                  Clica num exercício e escolhe o bloco onde o queres adicionar.
-                </p>
               </div>
-            </div>
-          </div>
+            </>
+          )}
+
+          {/* ── HISTÓRICO ── */}
+          {activeNav === 'history' && (
+            <>
+              <div className="px-4 pt-4 pb-3 border-b border-outline-variant flex-shrink-0">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Histórico de treinos</div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <p className="text-[11px] text-on-surface-variant leading-snug">
+                  O histórico de execução por exercício está disponível na ficha do cliente, separador <strong>Histórico</strong>.
+                </p>
+                <div className="mt-4 space-y-2">
+                  {blocks.flatMap((b) => b.exercises).slice(0, 10).map((ex) => (
+                    <div key={ex.id} className="flex items-center gap-2 py-1.5 border-b border-outline-variant/40 last:border-0">
+                      <span className="material-symbols-outlined text-base text-outline">fitness_center</span>
+                      <span className="text-xs text-on-surface truncate">{ex.exerciseName}</span>
+                    </div>
+                  ))}
+                  {blocks.flatMap((b) => b.exercises).length === 0 && (
+                    <p className="text-xs text-on-surface-variant">Adiciona exercícios ao treino para ver o histórico.</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── CALCULADORAS ── */}
+          {activeNav === 'calculators' && (
+            <>
+              <div className="px-4 pt-4 pb-3 border-b border-outline-variant flex-shrink-0">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Calculadoras</div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                {/* 1RM */}
+                <div className="bg-surface-container-low rounded-xl p-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.15em] text-on-surface-variant mb-3">Calculadora 1RM</div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant block mb-0.5">Peso (kg)</label>
+                      <input type="number" value={calcWeight} onChange={(e) => setCalcWeight(e.target.value)} placeholder="Ex: 80"
+                        className="w-full bg-white border border-outline-variant rounded-lg px-2 py-1.5 text-xs text-on-surface outline-none focus:border-primary" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant block mb-0.5">Reps realizadas</label>
+                      <input type="number" value={calcReps} onChange={(e) => setCalcReps(e.target.value)} placeholder="Ex: 8" min={1} max={30}
+                        className="w-full bg-white border border-outline-variant rounded-lg px-2 py-1.5 text-xs text-on-surface outline-none focus:border-primary" />
+                    </div>
+                  </div>
+                  {orm !== null && (
+                    <div className="mt-3 bg-primary/8 rounded-lg p-3 text-center">
+                      <div className="text-[9px] font-bold uppercase tracking-widest text-primary mb-0.5">1RM estimado</div>
+                      <div className="font-headline font-black text-2xl text-primary">{orm} kg</div>
+                    </div>
+                  )}
+                  {orm !== null && (
+                    <div className="mt-2 space-y-1">
+                      {[100, 90, 80, 70, 60].map((pct) => (
+                        <div key={pct} className="flex justify-between text-[10px]">
+                          <span className="text-on-surface-variant">{pct}% 1RM</span>
+                          <span className="font-bold text-on-surface">{Math.round(orm * pct / 100)} kg</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
         </div>
 
       </div>
